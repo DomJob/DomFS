@@ -1,6 +1,6 @@
 
 main: main.c domfs disk
-	gcc main.c bin/domfs.o bin/disk.o -g -o domfs
+	gcc main.c bin/domfs.o bin/disk.o -l:libtdjson.so -g -o domfs
 
 domfs: domfs.c
 	gcc -c -g domfs.c -o bin/domfs.o
