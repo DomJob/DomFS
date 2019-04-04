@@ -1,8 +1,12 @@
 #ifndef DISK_H
 #define DISK_H
 
-#include<stdio.h>
+int seize_block();
 
-void disk_test(void);
+int read_block(int id, char* data);
+int write_block(int id, char* data);
+
+int get_superblock();
+int set_superblock(int id);
 
 #endif
