@@ -1,18 +1,6 @@
 #include "telegram.h"
 
 
-// Sends a request and returns the result of that request according to the "extra" param
-char* tg_request(const char *request, const char* extra) {
-    td_json_client_send(client, request);
-    char* response;
-
-    do {
-        response = td_json_client_receive(client, TIMEOUT);
-    } while(response && strstr(response, extra) == NULL);
-
-    return response;
-}
-
 void tg_initialize() {
     tg_parse_data();
 
@@ -34,7 +22,6 @@ void tg_initialize() {
     td_json_client_send(client, encryption_key_req);
 
     // Check events to see what we need to do next.
-    // If nothing matches then we're good and connected.
     char* response;
 
     while(1) {
@@ -43,41 +30,69 @@ void tg_initialize() {
         if(!response)
             break;
 
+        if(strstr(response, "authorizationStateReady") != NULL) {
+            // We're in!
+            break;
+        }
+
         if(strstr(response, "authorizationStateWaitPhoneNumber") != NULL) {
-            // Need to give phone number
             printf("Phone number: ");
             char phone_number[20] = "+15817015326";
             scanf("%s", phone_number);
 
             char request_phone_number[500];
-            sprintf(request_phone_number, "{\"@type\": \"setAuthenticationPhoneNumber\", \"phone_number\": \"%s\", \"allow_flash_call\": false, \"is_current_phone_number\": false, \"@extra\": \"phone_number\"}", phone_number);
-            printf("%s\n", request_phone_number);
-
+            sprintf(request_phone_number,
+                "{\"@type\": \"setAuthenticationPhoneNumber\", \"phone_number\": \"%s\", \"allow_flash_call\": false, \"is_current_phone_number\": false, \"@extra\": \"phone_number\"}",
+                phone_number);
+            
             td_json_client_send(client, request_phone_number);
         }
 
         if(strstr(response, "authorizationStateWaitCode") != NULL) {
-            // Need to give the verification code
-            printf("Verification code: ");
-
+           printf("Verification code: ");
             char code[5];
             scanf("%s", code);
 
             char request_code_auth[500];
-            sprintf(request_code_auth, "{\"@type\": \"checkAuthenticationCode\", \"code\": \"%s\", \"first_name\": \"\", \"last_name\": \"\", \"@extra\": \"auth_code\"}", code);
-
+            sprintf(request_code_auth,
+                "{\"@type\": \"checkAuthenticationCode\", \"code\": \"%s\", \"first_name\": \"\", \"last_name\": \"\", \"@extra\": \"auth_code\"}",
+                code);
+            
             td_json_client_send(client, request_code_auth);
         }
 
         if(strstr(response, "authorizationStateWaitPassword") != NULL) {
-            // Need to give a password
             printf("Sorry, telegram account passwords aren't supported.");
             exit(0);
         }
     }
 }
 
+unsigned int tg_send_message(char* message) {
+    char req[5500];
+    sprintf(req,
+        "{\"@type\": \"sendMessage\", \"chat_id\": \"%s\", \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"message sent\"}",
+        tg_data.chat, message, strlen(message));
+    
+    td_json_client_send(client, req);
+
+    char* event;
+    while(1) {
+        event = td_json_client_receive(client, TIMEOUT);
+        if(!event)
+            return 0;
+        if(strstr(event, "updateMessageSendSucceeded") != NULL)
+            break;
+        if(strstr(event, "error") != NULL) 
+            printf("%s\n", event);
+    }
+    printf("%s\n", event);
+
+    return 1;
+}
+
 void tg_parse_data() {
+    char path[1000];
     FILE* ini_file = fopen("./config.ini", "r");
 
     char key[10];

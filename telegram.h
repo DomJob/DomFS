@@ -29,7 +29,7 @@ tg_data_struct tg_data;
 
 // Interface that disk.c will use 
 
-char* tg_request(const char *request, const char *extra);
+unsigned int tg_send_message(char* message);
 void tg_initialize();
 void tg_parse_data();
 
