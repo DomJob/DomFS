@@ -3,11 +3,10 @@
 
 #include "domfs.h"
 #include "disk.h"
+#include "telegram.h"
 
 int main() {
-    initialize_client();
-
-
-    td_json_client_destroy(client);
+    tg_initialize();
+    
     return 0;
 }

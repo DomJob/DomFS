@@ -1,28 +1,19 @@
 #ifndef DISK_H
 #define DISK_H
 
-// Useful TDLib headers
-void* td_json_client_create();
-void td_json_client_send (void *client, const char *request);
-char* td_json_client_receive (void *client, double timeout);
-char* td_json_client_execute (void *client, const char *request);
-void td_json_client_destroy (void *client);
-void td_set_log_verbosity_level (int new_verbosity_level);
-int td_set_log_file_path(const char *file_path);
+#include <stdint.h>
+#include "telegram.h"
 
-// More telegram-related crap
-void* client;
+#define BLOCK_SIZE 2096
+#define INODE_SIZE 32
+#define BID uint32_t
 
-int initialize_client();
+BID seize_block();
 
+void read_block(BID id, char* data);
+void write_block(BID id, char* data);
 
-// Disk-related functions
-int seize_block();
-
-int read_block(int id, char* data);
-int write_block(int id, char* data);
-
-int get_superblock();
-int set_superblock(int id);
+BID get_superblock();
+void set_superblock(BID id);
 
 #endif
