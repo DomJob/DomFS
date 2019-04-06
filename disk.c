@@ -29,8 +29,9 @@ void read_block(BID id, char* data) {
 
 void write_block(BID id, char* data) {
     for(int i=0; i<BLOCK_SIZE; i++) {
-        char byte = data[i];
-
+        unsigned char byte = data[i];
+        if(byte)
+        printf("Char: %u\n", byte);
         blocks[id].data[2*i]   = hex[byte >> 4];
         blocks[id].data[2*i+1] = hex[byte - (byte >> 4 << 4)];
     }

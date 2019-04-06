@@ -12,18 +12,18 @@
 
     inode:              32 bytes
         number          5 bytes
-        size (on disk)  5 bytes
+        size (on disk)  4 bytes
         time created    4 bytes
         last modified   4 bytes
         number links    1 bytes 
-        mode            1 byte (8 bit flags)
+        mode            2 byte (16 bit flags)
                             - Directory
                             - Regular file
-                            - RWX
-                            -  3 more spots
+                            - is link
+                            - RWX user group all
         data blocks     12 bytes
             Level 1:    4 bytes
-            Level 2:    4 bytes 
+            Level 2:    4 bytes
             Level 3:    4 bytes
 
             * max file size: 275.4 GB *
