@@ -6,7 +6,7 @@
 
 It uses FUSE (File system in user space) to mount domfs to any given mountpoint and navigate directories as you would on any hard drive or usb flash drive.
 
-Yes, I named the project after myself because I couldn't think of a better name and it's already been done (likely better implemented than me) so [tgfs](https://github.com/Firemoon777/tgfs) is already taken
+Yes, I named the project after myself because I couldn't think of a better name and something similar has already been done so [tgfs](https://github.com/Firemoon777/tgfs) is already taken
 
 ## Build
 
@@ -27,7 +27,7 @@ Simply run `make` and everything should build fine.
 
 2. Rename `config.ini.example` to `config.ini` and put in your api key and hash. You can get them from [my.telegram.org](https://my.telegram.org). You can leave `chat` and `supergroup` as `0` if you don't know the exact IDs.
 
-3. Run `./domfs mount` (it has to be in the same folder) and follow prompt instructions to login and setup the chat. Then as long as the process is running, you can navigate files mounted to the specified mount point!
+3. Run `./domfs mount` (you have to call the binary from its main folder) and follow prompt instructions to login and setup the chat. Then as long as the process is running, you can navigate files mounted to the specified mount point!
 
 ## Warning
 
