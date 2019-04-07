@@ -7,11 +7,12 @@
 
 #define TIMEOUT 3.0
 
-typedef struct {
+struct tg_data_struct {
     char api_id[100];
     char api_hash[100];
     char chat[100];
-} tg_data_struct;
+    char supergroup[100];
+} ;
 
 // td_json headers
 void* td_json_client_create();
@@ -27,7 +28,7 @@ int td_set_log_file_path(const char *file_path);
 void* client;
 void tg_initialize();
 
-tg_data_struct tg_data;
+struct tg_data_struct tg_data;
 void tg_parse_data();
 
 // Telegram interface that disk.c will use 
