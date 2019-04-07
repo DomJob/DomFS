@@ -2,5 +2,5 @@ domfs
 .vscode/
 bin/
 data/
-client.log
+client.log*
 config.ini

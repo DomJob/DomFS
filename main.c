@@ -7,10 +7,13 @@
 int main(int argc, char **argv) {
     tg_initialize();
     printf("Logged in!\n");
+    
+    int id = tg_send_message("Hello world! new message");
+    printf("Message sent, id = %d\n", id);
+    char msg[4096];
+    int r = tg_read_message(id, msg);
 
-
-    int id = tg_send_message("hello");
-    printf("Id: %u\n", id);
+    printf("Message (%d): %s\n", r, msg);
 
     return 0;
 }

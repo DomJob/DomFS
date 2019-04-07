@@ -1,6 +1,5 @@
 #include "telegram.h"
 
-
 void tg_initialize() {
     tg_parse_data();
 
@@ -104,7 +103,7 @@ unsigned int tg_send_message(char* message) {
             char c2 = event[i-3];
             char c3 = event[i-2];
             char c4 = event[i-1];
-            char c5 = event[i];
+            char c5 = event[i-0];
 
             if(c1 == '\"' && c2 == 'i' && c3 == 'd' && c4 == '\"' && c5 == ':') {
                 parsing_id = 1;
@@ -119,6 +118,69 @@ unsigned int tg_send_message(char* message) {
     }
 
     return id >> 20;
+}
+
+int tg_read_message(unsigned int id, char* message) {
+    // Empty out message
+    for(int i=0; i<4096; i++) {
+        message[i] = '\0';
+    }
+
+    // Prepare request
+    id = id << 20;
+    char request[300];
+    sprintf(request,
+    "{\"@type\": \"getMessage\", \"chat_id\": \"%s\", \"message_id\": \"%d\", \"@extra\": \"getmessage\"}",
+    tg_data.chat, id);
+    printf("Req: %s\n", request);
+    // Send request
+    td_json_client_send(client, request);
+
+    char* event;
+
+    while(1) {
+        event = td_json_client_receive(client, TIMEOUT);
+        if(!event) 
+            break;
+        if(strstr(event, "getmessage") != NULL) {
+            printf("%s\n", event);
+            break;
+        }
+    }
+
+    if(!event)
+        return -1;
+    if(strstr(event, "error") != NULL) {
+        printf("ERROR READING MESSAGE %d:\n%s\n", id >> 20, event);
+        return -1;
+    }
+
+    // Parse JSON (this is the dumbest part)
+
+    int parsing = 0;
+    int msg_cur = 0;
+    
+    for(int i = 7; i < strlen(event); i++) {
+        if(!parsing) {
+            char c1,c2,c3,c4,c5,c6,c7,c8, c9;
+            c1 = event[i-7];
+            c2 = event[i-6];
+            c3 = event[i-5];
+            c4 = event[i-4];
+            c5 = event[i-3];
+            c6 = event[i-2];
+            c7 = event[i-1];
+            c8 = event[i-0];
+            if(c1 == '\"' && c2 == 't' && c3 == 'e' && c4 == 'x' && c5 == 't' && c6 == '\"' && c7 == ':' && c8 == '\"')
+                parsing = 1;
+        } else {
+            if(event[i] == '\"')
+                break;
+            message[msg_cur++] = event[i];
+        }
+    }
+
+    return 0;
 }
 
 void tg_parse_data() {
