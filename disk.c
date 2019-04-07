@@ -2,7 +2,7 @@
 
 char hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-// Temporary disk emulator for testing until telegram works fine
+// Disk emulator for testing without overloading Telegram with dumb stuff
 
 typedef struct {
     char data[2*BLOCK_SIZE];
@@ -11,10 +11,11 @@ typedef struct {
 block blocks[500];
 
 BID superblock = 0;
-BID nextfree = 1;
+BID nextfree = 0;
 
 BID seize_block() {
-    strcpy(blocks[nextfree].data, "FREE");
+    for(int i=0; i<2*BLOCK_SIZE; i++)
+        blocks[nextfree].data[i] = '0';
     return nextfree++;
 }
 
@@ -30,12 +31,9 @@ void read_block(BID id, char* data) {
 void write_block(BID id, char* data) {
     for(int i=0; i<BLOCK_SIZE; i++) {
         unsigned char byte = data[i];
-        if(byte)
-        printf("Char: %u\n", byte);
         blocks[id].data[2*i]   = hex[byte >> 4];
         blocks[id].data[2*i+1] = hex[byte - (byte >> 4 << 4)];
     }
-    printf("%s\n", blocks[id].data);
 }
 
 BID get_superblock() {

@@ -11,12 +11,12 @@
         next free inode     5 bytes
 
     inode:              32 bytes
-        number          5 bytes
-        size (on disk)  4 bytes
+        address         5 bytes
+        size (on disk)  5 bytes
         time created    4 bytes
         last modified   4 bytes
         number links    1 bytes 
-        mode            2 byte (16 bit flags)
+        mode            1 byte (8 bit flags)
                             - Directory
                             - Regular file
                             - is link
