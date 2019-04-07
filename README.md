@@ -14,9 +14,10 @@ Note: Because of FUSE (and many other development-related reasons), DomFS is onl
 
 **Dependencies:**
 
-* libfuse
+* libfuse-dev
 * libtdjson\.so
-   * You can build it from source from [here](https://github.com/tdlib/td/) or find a `libtdjson.so` file elsewhere online. Put `libtdjson.so` in `/usr/lib/`
+   * You can build it from source from [here](https://github.com/tdlib/td/) or find a `libtdjson.so` binary elsewhere online.
+   * Put `libtdjson.so` in `/usr/lib/`
 
 Simply run `make` and everything should build fine.
 

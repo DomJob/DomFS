@@ -41,5 +41,6 @@ struct inode_pointers {
     struct inode inodes[64];
 };
 
+// Todo - function headers
 
 #endif

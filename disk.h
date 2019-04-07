@@ -4,8 +4,6 @@
 #include "macro.h"
 #include "telegram.h"
 
-// Disk functions
-
 BID seize_block();
 
 void read_block(BID id, char* data);
