@@ -5,14 +5,6 @@
 
 #define packed __attribute__((__packed__)) 
 
-typedef struct {
-    uint8_t b1;
-    uint8_t b2;
-    uint8_t b3;
-    uint8_t b4;
-    uint8_t b5;
-} uint40_t;
-
 struct packed inode_address {
     BID block;
     uint8_t offset;
@@ -27,11 +19,10 @@ struct packed superblock {
 
 struct packed inode {
     struct inode_address address;
-    uint40_t size;
-    uint32_t created;
-    uint32_t modified;
+    uint64_t size;
     uint8_t nlinks;
-    uint8_t mode;
+    uint16_t mode;
+    BID level0;
     BID level1;
     BID level2;
     BID level3;

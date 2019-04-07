@@ -12,16 +12,15 @@
 
     inode:              32 bytes
         address         5 bytes
-        size (on disk)  5 bytes
-        time created    4 bytes
-        last modified   4 bytes
+        size (on disk)  8 bytes
         number links    1 bytes 
-        mode            1 byte (8 bit flags)
-                            - Directory
-                            - Regular file
+        mode            2 byte (16 bit flags)
+                            - is directory
+                            - is regular file
                             - is link
                             - RWX user group all
-        data blocks     12 bytes
+        data blocks     
+            Level 0:    4 bytes
             Level 1:    4 bytes
             Level 2:    4 bytes
             Level 3:    4 bytes
