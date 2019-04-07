@@ -106,11 +106,6 @@ BID tg_send_message(char* message) {
 }
 
 int tg_read_message(BID id, char* message) {
-    // Empty out message
-    for(int i=0; i<4096; i++) {
-        message[i] = '\0';
-    }
-
     // Prepare request
     id = id << 20;
     char request[300];
@@ -142,7 +137,7 @@ int tg_read_message(BID id, char* message) {
 
     int parsing = 0;
     int msg_cur = 0;
-    
+
     for(int i = 7; i < strlen(event); i++) {
         if(!parsing) {
             char c1,c2,c3,c4,c5,c6,c7,c8, c9;
@@ -427,4 +422,8 @@ unsigned int parse_id(char* event) {
         }
     }
     return id;
+}
+
+void tg_close() {
+    td_json_client_destroy(client);
 }

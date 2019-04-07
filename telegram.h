@@ -23,10 +23,10 @@ int td_set_log_file_path(const char *file_path);
 // useful data and functions
 void* client;
 void tg_initialize();
+void tg_close();
 struct tg_data_struct tg_data;
 
 // Telegram interface that disk.c will use 
-
 BID  tg_send_message(char* message);
 int  tg_edit_message(BID id, char* message);
 int  tg_read_message(BID id, char* message);
