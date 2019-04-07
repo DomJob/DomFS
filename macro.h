@@ -1,7 +1,10 @@
 #ifndef MACRO_H
 #define MACRO_H
 
+#include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #define packed          __attribute__((__packed__)) 
 

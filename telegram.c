@@ -5,7 +5,7 @@ unsigned int parse_id(char* event);
 void tg_initialize() {
     tg_parse_data();
 
-    td_set_log_verbosity_level(5);
+    td_set_log_verbosity_level(2);
     td_set_log_file_path("./client.log");
     client = td_json_client_create();
 
@@ -195,7 +195,27 @@ void tg_pin_message(BID id) {
 }
 
 int tg_edit_message(BID id, char* message) {
-    // Todo
+    char req[5500];
+    sprintf(req,
+        "{\"@type\": \"editMessageText\", \"chat_id\": \"%s\", \"message_id\" : %d, \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"messageedited\"}",
+        tg_data.chat, id << 20, message, strlen(message));
+    
+    td_json_client_send(client, req);
+
+    char* event;
+    int ok = -1;
+    while(1) {
+        event = td_json_client_receive(client, TIMEOUT);
+        if(!event) 
+            break;
+        if(strstr(event, "messageedited") != NULL) {
+            printf("Res: %s\n", event);
+            ok = 0;
+            break;
+        }
+    }
+
+    return 0;
 }
 
 BID tg_get_pinned_message() {
