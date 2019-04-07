@@ -2,6 +2,9 @@
 
 char hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
+// Helper functions
+char hex2byte(char first, char second);
+
 // Disk emulator for testing without overloading Telegram with dumb stuff
 
 typedef struct {

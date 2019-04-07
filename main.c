@@ -6,9 +6,9 @@
 #include "telegram.h"
 
 int main(int argc, char **argv) {
-    printf("Size: %d\n", sizeof(struct inode));
-/*    tg_initialize();
-    printf("Logged in! Supergroup: %s\n", tg_data.supergroup);
+    tg_initialize();
+
+    /*printf("Logged in! Supergroup: %s\n", tg_data.supergroup);
     
     int id = tg_send_message("Hello world! new message");
     printf("Message sent, id = %d\n", id);
@@ -18,8 +18,13 @@ int main(int argc, char **argv) {
     printf("Message (%d): %s\n", r, msg);
 
     tg_pin_message(id);
-    printf("Message pinned? :-)\n");
-*/
+    printf("Message pinned? :-)\n");*/
+
+    BID pinned = tg_get_pinned_message();
+    char msg[4096];
+    int r = tg_read_message(pinned, msg);
+    printf("Pinned: %d, content: %s\n", pinned, msg);
+    
 
 
     return 0;

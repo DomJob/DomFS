@@ -69,7 +69,7 @@ void tg_initialize() {
     }
 }
 
-unsigned int tg_send_message(char* message) {
+BID tg_send_message(char* message) {
     char req[5500];
     sprintf(req,
         "{\"@type\": \"sendMessage\", \"chat_id\": \"%s\", \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"message sent\"}",
@@ -98,7 +98,7 @@ unsigned int tg_send_message(char* message) {
     return parse_id(event) >> 20;
 }
 
-int tg_read_message(unsigned int id, char* message) {
+int tg_read_message(BID id, char* message) {
     // Empty out message
     for(int i=0; i<4096; i++) {
         message[i] = '\0';
@@ -159,7 +159,7 @@ int tg_read_message(unsigned int id, char* message) {
     return 0;
 }
 
-void tg_pin_message(unsigned int id) {
+void tg_pin_message(BID id) {
     id = id << 20;
 
     char request[500];
@@ -192,6 +192,36 @@ void tg_pin_message(unsigned int id) {
             break;
         }
     }
+}
+
+int tg_edit_message(BID id, char* message) {
+    // Todo
+}
+
+BID tg_get_pinned_message() {
+    char request[500];
+    sprintf(request,
+        "{\"@type\": \"getChatPinnedMessage\", \"chat_id\": \"%s\", \"@extra\": \"getpinned\"}",
+        tg_data.chat);
+
+    td_json_client_send(client, request);
+
+    char* event;
+    int ok = 0;
+    while(1) {
+        event = td_json_client_receive(client, TIMEOUT);
+        if(!event) 
+            break;
+        if(strstr(event, "getpinned") != NULL) {
+            ok = 1;
+            break;
+        }
+    }
+
+    if(!ok)
+        return 0;
+
+    return parse_id(event) >> 20;
 }
 
 void tg_parse_data() {

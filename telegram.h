@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define TIMEOUT 3.0
+#include "macro.h"
 
 struct tg_data_struct {
     char api_id[100];
@@ -33,10 +33,10 @@ void tg_parse_data();
 
 // Telegram interface that disk.c will use 
 
-unsigned int tg_send_message(char* message);
-void tg_edit_message(unsigned int id, char* message);
-int  tg_read_message(unsigned int id, char* message);
-void tg_pin_message(unsigned int id);
-unsigned int tg_get_pinned_message();
+BID tg_send_message(char* message);
+int tg_edit_message(BID id, char* message);
+int  tg_read_message(BID id, char* message);
+void tg_pin_message(BID id);
+BID tg_get_pinned_message();
 
 #endif

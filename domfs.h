@@ -1,9 +1,8 @@
 #ifndef DOMFS_H
 #define DOMFS_H
 
+#include "macro.h"
 #include "disk.h"
-
-#define packed __attribute__((__packed__)) 
 
 struct packed inode_address {
     BID block;
