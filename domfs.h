@@ -29,7 +29,6 @@ struct packed inode {
 
 struct packed dir_entry {
     struct inode_address inode;
-    uint8_t name_length;
     char name[256];
 };
 
@@ -41,6 +40,22 @@ struct inode_pointers {
     struct inode inodes[64];
 };
 
-// Todo - function headers
+// Called from main()
+int fs_initialize();
+
+// Functions that FUSE will use
+int fs_getattr(char* path, struct inode* inode);
+int fs_create(char* path);
+int fs_mkdir(char* path);
+int fs_read(char* path, char* buffer, long offset, long length);
+int fs_readdir(char* path, struct dir_entry** entries);
+int fs_write(char* path, char* buffer, long offset, long length);
+int fs_chmod(char* path, uint16_t new_mode);
+int fs_hardlink(char* source, char* dest);
+int fs_unlink(char* path);
+int fs_rmdir(char* path);
+int fs_rename(char* source, char* dest);
+int fs_truncate(char* path, long length);
+int fs_format();
 
 #endif
