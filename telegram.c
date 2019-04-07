@@ -1,6 +1,8 @@
 #include "telegram.h"
 
 unsigned int parse_id(char* event);
+void tg_parse_data();
+void tg_setup_chat();
 
 void tg_initialize() {
     tg_parse_data();
@@ -64,8 +66,13 @@ void tg_initialize() {
 
         if(strstr(response, "authorizationStateWaitPassword") != NULL) {
             printf("Sorry, telegram account passwords aren't supported.");
+            td_json_client_destroy(client);
             exit(0);
         }
+    }
+
+    if(strcmp(tg_data.chat, "0") == 0 || strcmp(tg_data.supergroup, "0") == 0) {
+        tg_setup_chat();
     }
 }
 
@@ -89,7 +96,7 @@ BID tg_send_message(char* message) {
             break;
         }
         if(strstr(event, "error") != NULL) 
-            printf("%s\n", event);
+            printf("ERROR SENDING MESSAGE: %s\n", event);
     }
 
     if(!success)
@@ -175,20 +182,11 @@ void tg_pin_message(BID id) {
         event = td_json_client_receive(client, TIMEOUT);
         if(!event) 
             break;
-        if(strstr(event, "pinmessage") != NULL) {
-            printf("Pinned: %s\n", event);
-        }
         if(strstr(event, "updateChatLastMessage") != NULL && strstr(event, "messagePinMessage") != NULL) {
-            printf("Pinned: %s\n", event);
             unsigned int announceId = parse_id(event);
-            char deleteReq[500];
-            sprintf(deleteReq,
-            "{\"@type\": \"deleteMessages\", \"chat_id\": \"%s\", \"message_ids\": [\"%d\"], \"@extra\": \"deletepinannouncement\"}",
-            tg_data.chat, announceId);
-            td_json_client_send(client, deleteReq);
+            tg_delete_message(announceId >> 20);
         }
         if(strstr(event, "deletepinannouncement") != NULL) {
-            printf("Dleete: %s\n", event);
             break;
         }
     }
@@ -244,6 +242,22 @@ BID tg_get_pinned_message() {
     return parse_id(event) >> 20;
 }
 
+void tg_delete_message(BID id) {
+    char deleteReq[500];
+                sprintf(deleteReq,
+                "{\"@type\": \"deleteMessages\", \"chat_id\": \"%s\", \"message_ids\": [\"%d\"], \"@extra\": \"deletemessage\"}",
+                tg_data.chat, id << 20);
+                
+    td_json_client_send(client, deleteReq);
+
+    while(1) {
+        char* event = td_json_client_receive(client, TIMEOUT);
+        if(!event || strstr(event, "deletemessage") != NULL) {
+            return;
+        }
+    }
+}
+
 void tg_parse_data() {
     char path[1000];
     FILE* ini_file = fopen("./config.ini", "r");
@@ -279,6 +293,115 @@ void tg_parse_data() {
         value[i++] = c;
     }
     fclose(ini_file);
+}
+
+void tg_setup_chat() {
+    printf("Please send a message containing \"DOMFS\" (in all caps) in the supergroup that will be used to store data.\n");
+
+    char* event;
+    while(1) {
+        event = td_json_client_receive(client, TIMEOUT);
+        if(!event)
+            continue;
+        if(strstr(event, "updateNewMessage") != NULL && strstr(event, "DOMFS") != NULL) {
+            break;
+        }
+    }
+    int msgid = parse_id(event) >> 20;
+
+    printf("Message received!\n");
+    // Parse chat_id
+
+    {
+        int j = 0;
+        int parsing = 0;
+        for(int i=8; i<strlen(event); i++) {
+            if(!parsing) {
+                char c1 = event[i-8];
+                char c2 = event[i-7];
+                char c3 = event[i-6];
+                char c4 = event[i-5];
+                char c5 = event[i-4];
+                char c6 = event[i-3];
+                char c7 = event[i-2];
+                char c8 = event[i-1];
+                char c9 = event[i];
+                if(c1 == 'c' && c2 == 'h' && c3 == 'a' && c4 == 't' && c5 == '_' && c6 == 'i' && c7 == 'd' && c8 == '\"' && c9 == ':')
+                    parsing = 1;
+            } else {
+                char c = event[i];
+                if(c == ',')
+                    break;
+                tg_data.chat[j++] =c;
+            }
+        }
+    }
+
+    printf("Chat id:      %s\n", tg_data.chat);
+
+    tg_delete_message(msgid);
+    
+    // Request supergroup id
+    char request[500];
+    sprintf(request,
+        "{\"@type\": \"getChat\",\"chat_id\" : \"%s\",\"@extra\": \"setuprequest\"}",
+        tg_data.chat);
+
+    td_json_client_send(client, request);
+
+    while(1) {
+        event = td_json_client_receive(client, TIMEOUT);
+        if(!event)
+            break;
+        if(strstr(event, "setuprequest") != NULL) {
+            //printf("Req: %s\n", event);
+            break;
+        }
+    }
+
+    if(!event) {
+        printf("Something went wrong.\n");
+        td_json_client_destroy(client);
+        exit(1);
+    }
+
+    // Parse supergroup id
+    {
+        int j = 0;
+        int parsing = 0;
+        for(int i=8; i<strlen(event); i++) {
+            if(!parsing) {
+                char c1 = event[i-8];
+                char c2 = event[i-7];
+                char c3 = event[i-6];
+                char c4 = event[i-5];
+                char c5 = event[i-4];
+                char c6 = event[i-3];
+                char c7 = event[i-2];
+                char c8 = event[i-1];
+                char c9 = event[i];
+                if(c1 == 'r' && c2 == 'o' && c3 == 'u' && c4 == 'p' && c5 == '_' && c6 == 'i' && c7 == 'd' && c8 == '\"' && c9 == ':')
+                    parsing = 1;
+            } else {
+                char c = event[i];
+                if(c == ',')
+                    break;
+                tg_data.supergroup[j++] =c;
+            }
+        }
+    }
+
+    printf("Supergroup id: %s\n", tg_data.supergroup);
+
+    // Save data to file
+
+    FILE* ini_file = fopen("./config.ini", "w");
+    fprintf(ini_file,
+        "api_id = %s\napi_hash = %s\nchat = %s\nsupergroup = %s",
+        tg_data.api_id, tg_data.api_hash, tg_data.chat, tg_data.supergroup);
+    fclose(ini_file);
+
+    printf("Setup complete!\n");
 }
 
 unsigned int parse_id(char* event) {

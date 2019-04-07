@@ -1,4 +1,4 @@
 api_id = 123456
 api_hash = 79207520636865636b696e6720646973
-chat = -1
-supergroup = -1
+chat = 0
+supergroup = 0

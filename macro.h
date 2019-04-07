@@ -8,7 +8,7 @@
 
 #define packed          __attribute__((__packed__)) 
 
-#define TIMEOUT         3.0
+#define TIMEOUT         1.0
 #define BLOCK_SIZE      2048
 #define INODE_SIZE      32
 #define BID             uint32_t

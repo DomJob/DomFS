@@ -24,7 +24,7 @@ Simply run `make` and everything should build fine.
 
 1. Create a dedicated supergroup on telegram, make your client bot admin with full privileges (if you're not running it on your main account)
 
-2. Rename `config.ini.example` to `config.ini` and put in your api key and hash. You can get them from [my.telegram.org](https://my.telegram.org). You can leave `chat` and `supergroup` to -1, you will be prompted instructions on how to set it up. 
+2. Rename `config.ini.example` to `config.ini` and put in your api key and hash. You can get them from [my.telegram.org](https://my.telegram.org). You can leave `chat` and `supergroup` as `0` if you don't know the exact IDs.
 
 3. Run `./domfs mount` (it has to be in the same folder) and follow prompt instructions to login and setup the chat. Then as long as the process is running, you can navigate files mounted to the specified mount point!
 
