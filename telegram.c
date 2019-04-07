@@ -49,7 +49,7 @@ void tg_initialize() {
         }
 
         if(strstr(response, "authorizationStateWaitCode") != NULL) {
-           printf("Verification code: ");
+            printf("Verification code: ");
             char code[5];
             scanf("%s", code);
 
@@ -76,19 +76,49 @@ unsigned int tg_send_message(char* message) {
     
     td_json_client_send(client, req);
 
+    int success = 0;
+
     char* event;
     while(1) {
         event = td_json_client_receive(client, TIMEOUT);
         if(!event)
             return 0;
-        if(strstr(event, "updateMessageSendSucceeded") != NULL)
+        if(strstr(event, "updateMessageSendSucceeded") != NULL) {
+            success = 1;
             break;
+        }
         if(strstr(event, "error") != NULL) 
             printf("%s\n", event);
     }
-    printf("%s\n", event);
 
-    return 1;
+    if(!success)
+        return 0;
+
+    long id = 0;
+
+    int parsing_id = 0;
+
+    for(int i=4; i<strlen(event); i++) {
+        if(!parsing_id) {
+            char c1 = event[i-4];
+            char c2 = event[i-3];
+            char c3 = event[i-2];
+            char c4 = event[i-1];
+            char c5 = event[i];
+
+            if(c1 == '\"' && c2 == 'i' && c3 == 'd' && c4 == '\"' && c5 == ':') {
+                parsing_id = 1;
+            }
+        } else {
+            char n = event[i];
+            if(n == ',')
+                break;
+            id *= 10;
+            id += (n - 48);
+        }
+    }
+
+    return id >> 20;
 }
 
 void tg_parse_data() {
