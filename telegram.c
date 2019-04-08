@@ -101,8 +101,10 @@ BID tg_send_message(char* message) {
 
     if(!success)
         return 0;
+        
+    unsigned int id = parse_id(event) >> 20;
 
-    return parse_id(event) >> 20;
+    return id;
 }
 
 int tg_read_message(BID id, char* message) {
@@ -202,7 +204,6 @@ int tg_edit_message(BID id, char* message) {
         if(!event) 
             break;
         if(strstr(event, "messageedited") != NULL) {
-            printf("Res: %s\n", event);
             ok = 0;
             break;
         }

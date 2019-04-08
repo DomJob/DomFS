@@ -28,31 +28,22 @@ void read_block(BID id, char* data) {
     }
 }
 
-void write_block(BID id, char* data) {
-    char bindata[BLOCK_SIZE];
-    for(int i=0; i<strlen(data); i++)
-        bindata[i] = data[i];
-    for(int i=strlen(data); i<BLOCK_SIZE; i++)
-        bindata[i] = '\0';
+void write_block(BID id, char* data, int length) {
+    char hexdata[2*length+1];
 
-    char hexdata[2*BLOCK_SIZE];
-
-    for(int i=0; i<BLOCK_SIZE; i++) {
-        char byte = bindata[i];
+    for(int i=0; i<length; i++) {
+        unsigned char byte = data[i];
         hexdata[2*i]   = hex[byte >> 4];
         hexdata[2*i+1] = hex[byte - (byte >> 4 << 4)];
     }
 
-    // Trim right zeros 
-    int i;
-    for(i = BLOCK_SIZE; i>1; i--) {
-        if(hexdata[i] != '0') 
+    // Trim right-most zeros 
+    int hexlen;
+    for(hexlen = 2*length; hexlen>1; hexlen--) {
+        if(hexdata[hexlen] != '0') 
             break;
     }
-
-    if(i != BLOCK_SIZE)
-        hexdata[i+1] = '\0';
-
+    hexdata[hexlen] = '\0';
     tg_edit_message(id, hexdata);
 }
 
