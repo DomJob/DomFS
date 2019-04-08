@@ -1,10 +1,13 @@
 #include "telegram.h"
 
+unsigned int counter;
+
 unsigned int parse_id(char* event);
 void tg_parse_data();
 void tg_setup_chat();
 
 void tg_initialize() {
+    counter = 0;
     tg_parse_data();
 
     td_set_log_verbosity_level(2);
@@ -79,7 +82,7 @@ void tg_initialize() {
 BID tg_send_message(char* message) {
     char req[5500];
     sprintf(req,
-        "{\"@type\": \"sendMessage\", \"chat_id\": \"%s\", \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"message sent\"}",
+        "{\"@type\": \"sendMessage\", \"chat_id\": \"%s\", \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"sendmessage\"}",
         tg_data.chat, message, strlen(message));
     
     td_json_client_send(client, req);
@@ -108,12 +111,14 @@ BID tg_send_message(char* message) {
 }
 
 int tg_read_message(BID id, char* message) {
+    char extra[50];
+    sprintf(extra, "get%dmessage", counter++);
     // Prepare request
     id = id << 20;
     char request[300];
     sprintf(request,
-    "{\"@type\": \"getMessage\", \"chat_id\": \"%s\", \"message_id\": \"%d\", \"@extra\": \"getmessage\"}",
-    tg_data.chat, id);
+    "{\"@type\": \"getMessage\", \"chat_id\": \"%s\", \"message_id\": \"%d\", \"@extra\": \"%s\"}",
+    tg_data.chat, id, extra);
     // Send request
     td_json_client_send(client, request);
 
@@ -123,7 +128,7 @@ int tg_read_message(BID id, char* message) {
         event = td_json_client_receive(client, TIMEOUT);
         if(!event) 
             break;
-        if(strstr(event, "getmessage") != NULL) {
+        if(strstr(event, extra) != NULL) {
             break;
         }
     }
