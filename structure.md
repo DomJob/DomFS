@@ -1,7 +1,7 @@
     address of a block  : 4 bytes
-    address of an inode : 5 bytes : block + offset = 4 bytes + 6 bits (2 bits wasted)
+    address of an inode : block + offset = 4 bytes + 6 bits = 38 bits
 
-    32 byte inodes in 2048 byte blocks = 64 inodes per block = 6 bits.
+    32 byte inodes in 2048 byte blocks = 64 inodes per block = 6 bit offset.
 
     (pinned) superblock
         "SUPERBLOCK"        10 bytes
@@ -11,16 +11,23 @@
         next free inode     5 bytes
 
     inode:              32 bytes
-        address         5 bytes
-        size (on disk)  8 bytes
-        number links    1 bytes 
-        mode            2 byte (16 bit flags)
+        block           4 bytes
+
+        --- 64 bit fields (8 bytes)
+        offset          6 bits
+        size (on disk)  38 bits
+        mode            12 bit flags
                             - is directory
                             - is regular file
                             - is link
                             - RWX user group all
-        data blocks     
-            Level 0:    4 bytes
+        number links    8 bits
+        ---
+
+        created         4 bytes
+        modified        4 bytes
+
+        data blocks     12 bytes
             Level 1:    4 bytes
             Level 2:    4 bytes
             Level 3:    4 bytes

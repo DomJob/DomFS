@@ -4,31 +4,31 @@
 #include "macro.h"
 #include "disk.h"
 
-struct packed inode_address {
-    BID block;
-    uint8_t offset;
-};
-
-struct packed superblock {
+struct superblock {
     char check[11];
     BID address;
-    struct inode_address root_inode;
-    struct inode_address next_inode;
+    BID root_inode;
+    BID next_inode;
 };
 
 struct packed inode {
-    struct inode_address address;
-    uint64_t size;
+    BID block;
+    uint64_t size  : 38;
+    uint16_t mode  : 12;
+    uint8_t offset : 6;
     uint8_t nlinks;
-    uint16_t mode;
-    BID level0;
+
+    uint32_t created;
+    uint32_t modified;
+
     BID level1;
     BID level2;
     BID level3;
 };
 
 struct file {
-    struct inode_address address;
+    BID block;
+    uint8_t offset : 6;
     char* name;
 };
 
@@ -36,8 +36,15 @@ struct block_pointers {
     BID blocks[512];
 };
 
+struct inode_pointers {
+    struct inode inodes[64];
+};
+
 // Called from main()
 int fs_initialize();
+
+// Debug helpers
+void print_inode(struct inode* inode);
 
 // Functions that FUSE will use
 int fs_getattr(char* path, struct inode* inode);
