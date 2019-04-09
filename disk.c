@@ -43,7 +43,7 @@ void write_block(BID id, char* data, int length) {
         if(hexdata[hexlen] != '0') 
             break;
     }
-    hexdata[hexlen] = '\0';
+    hexdata[hexlen+1] = '\0';
     tg_edit_message(id, hexdata);
 }
 

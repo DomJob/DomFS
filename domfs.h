@@ -26,9 +26,9 @@ struct packed inode {
     BID level3;
 };
 
-struct file {
+struct packed file {
     BID block;
-    uint8_t offset : 6;
+    uint8_t offset;
     char* name;
 };
 
@@ -36,7 +36,7 @@ struct block_pointers {
     BID blocks[512];
 };
 
-struct inode_pointers {
+struct inode_block {
     struct inode inodes[64];
 };
 
@@ -47,18 +47,18 @@ int fs_initialize();
 void print_inode(struct inode* inode);
 
 // Functions that FUSE will use
-int fs_getattr(char* path, struct inode* inode);
-int fs_create(char* path);
-int fs_mkdir(char* path);
-int fs_read(char* path, char* buffer, long offset, long length);
-int fs_readdir(char* path, struct file** entries);
-int fs_write(char* path, char* buffer, long offset, long length);
-int fs_chmod(char* path, uint16_t new_mode);
-int fs_hardlink(char* source, char* dest);
-int fs_unlink(char* path);
-int fs_rmdir(char* path);
-int fs_rename(char* source, char* dest);
-int fs_truncate(char* path, long length);
+int fs_getattr(const char* path, struct inode* inode);
+int fs_create(const char* path);
+int fs_mkdir(const char* path);
+int fs_read(const char* path, char* buffer, long offset, long length);
+int fs_readdir(const char* path, struct file** entries);
+int fs_write(const char* path, char* buffer, long offset, long length);
+int fs_chmod(const char* path, uint16_t new_mode);
+int fs_hardlink(const char* source, char* dest);
+int fs_unlink(const char* path);
+int fs_rmdir(const char* path);
+int fs_rename(const char* source, char* dest);
+int fs_truncate(const char* path, long length);
 int fs_format();
 
 #endif

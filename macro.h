@@ -9,6 +9,8 @@
 
 #define packed          __attribute__((__packed__)) 
 
+#define DEBUG
+
 #define TIMEOUT         1.0
 #define BLOCK_SIZE      2048
 #define INODE_SIZE      32
@@ -35,6 +37,14 @@
 #define G_IWALL 0b000000000010
 #define G_IXALL 0b000000000001
 #define G_IRWXA 0b000000000111
+
+
+#ifdef DEBUG
+#define DPRINT(...) printf( __VA_ARGS__ );
+#else
+#define DPRINT(...) do{ } while ( 0 )
+#endif
+
 
 
 #endif

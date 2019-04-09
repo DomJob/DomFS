@@ -95,11 +95,12 @@ BID tg_send_message(char* message) {
         if(!event)
             return 0;
         if(strstr(event, "updateMessageSendSucceeded") != NULL) {
+            DPRINT("tg_send_message result: %s\n", event);
             success = 1;
             break;
         }
         if(strstr(event, "error") != NULL) 
-            printf("ERROR SENDING MESSAGE: %s\n", event);
+            DPRINT("ERROR SENDING MESSAGE: %s\n", event);
     }
 
     if(!success)
@@ -232,13 +233,17 @@ BID tg_get_pinned_message() {
         if(!event) 
             break;
         if(strstr(event, "getpinned") != NULL) {
+            DPRINT("event - %s\n", event);
             ok = 1;
             break;
         }
     }
 
-    if(!ok)
+    if(!ok) {
+        DPRINT("something went wrong - %s\n", event);
         return 0;
+    }
+        
 
     return parse_id(event) >> 20;
 }
