@@ -17,7 +17,7 @@
 #define BLOCK_ADDR      5
 #define BID             uint32_t
 
-#define MAX_FILE_SIZE   275415828480 // (1 + 512 + 512^2 + 512^3) * 2048 bytes
+#define MAX_FILE_SIZE   275415826432 // (512 + 512^2 + 512^3) * 2048 bytes
 
 #define G_IFDIR 0b100000000000
 #define G_IFREG 0b010000000000

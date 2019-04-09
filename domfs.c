@@ -201,7 +201,6 @@ int update_superblock() {
 }
 
 int update_inode(struct inode* inode) {
-    DPRINT("Level1: %d\n", inode->level1);
     char data[BLOCK_SIZE];
     read_block(inode->block, data);
 

@@ -35,9 +35,10 @@
             * max file size: 275.4 GB *
 
     dir data:
-        -List of: (possible fragmented in data blocks)
+        -List of: (possibly fragmented in data blocks)
             inode address       : 4 bytes + 1 byte
-            name                : arbitrary many bytes (printable only please)
+            name                : arbitrary many bytes
+                                  but limited to 256 by the implementation
             File name separator : 1 byte (0x03)
 
 

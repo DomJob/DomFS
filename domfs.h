@@ -40,11 +40,8 @@ struct inode_block {
     struct inode inodes[64];
 };
 
-// Called from main()
+// Called from main
 int fs_initialize();
-
-// Debug helpers
-void print_inode(struct inode* inode);
 
 // Functions that FUSE will use
 int fs_getattr(const char* path, struct inode* inode);
