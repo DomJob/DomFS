@@ -37,6 +37,6 @@ There is a good chance that the phone number you use gets banned the second you 
 
 The maximum message length on Telegram is 4096 characters, so this represents 2048 bytes of binary data when encoded in hexadecimal. (I know I could encode way more with unicode characters but this is simpler)
 
-So a message contains up to 2096 bytes, which is our file system's block. The data is first accessed through the superblock which is the pinned message in the chat. This block contains information like the root directory's inode and from there everything can be decoded given references to other blocks that `domfs` reads and edits. The file system's structure is highly inspired on the old school [Unix File System](https://en.wikipedia.org/wiki/Unix_File_System)
+So a message contains up to 2048 bytes, which is our file system's block. The data is first accessed through the superblock which is the pinned message in the chat. This block contains information like the root directory's inode and from there everything can be decoded given references to other blocks that `domfs` reads and edits. The file system's structure is highly inspired on the old school [Unix File System](https://en.wikipedia.org/wiki/Unix_File_System)
 
 You can find more information about the structure [here](structure.md) but that file was more of a reference for myself during development.
