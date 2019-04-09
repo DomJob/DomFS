@@ -7,6 +7,7 @@ void tg_parse_data();
 void tg_setup_chat();
 
 void tg_initialize() {
+    mkdir("./data", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     counter = 0;
     tg_parse_data();
 

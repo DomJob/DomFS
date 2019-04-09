@@ -1,19 +1,16 @@
 
-main: main.c domfs disk telegram dirs
-	gcc main.c bin/telegram.o bin/disk.o bin/domfs.o  -l:libtdjson.so -g -o domfs
+main: main.c domfs disk telegram
+	gcc main.c telegram.o disk.o domfs.o  -l:libtdjson.so -g -o domfs
 
 domfs: domfs.c
-	gcc -c -g domfs.c -o bin/domfs.o
+	gcc -c -g domfs.c -o domfs.o
 
 disk: disk.c
-	gcc -c -g disk.c -o bin/disk.o
+	gcc -c -g disk.c -o disk.o
 
 telegram: telegram.c
-	gcc -c -g telegram.c -o bin/telegram.o
-
-dirs:
-	mkdir -p bin && mkdir -p data
+	gcc -c -g telegram.c -o telegram.o
 
 clean: 
-	rm -f bin/*
+	rm -f *.o
 	rm -f domfs

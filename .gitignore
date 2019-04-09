@@ -1,6 +1,6 @@
 domfs
 .vscode/
-bin/
+*.o
 data/
 client.log*
 config.ini
