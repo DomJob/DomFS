@@ -8,7 +8,7 @@
 #include <time.h>
 #include <sys/stat.h>
 
-#define packed          __attribute__((__packed__)) 
+#define PACKED          __attribute__((__packed__)) 
 
 #define DEBUG
 

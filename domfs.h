@@ -11,7 +11,7 @@ struct superblock {
     BID next_inode;
 };
 
-struct packed inode {
+struct PACKED inode {
     BID block;
     uint64_t size  : 38;
     uint16_t mode  : 12;
@@ -26,7 +26,7 @@ struct packed inode {
     BID level3;
 };
 
-struct packed file {
+struct PACKED file {
     BID block;
     uint8_t offset;
     char* name;
