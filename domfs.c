@@ -143,7 +143,7 @@ int fs_getattr(const char* path, struct inode* inode) {
 // -1 : Parent directory not found
 // -2 : File already exists
 // -3 : Permission error
-// -4 : Input error
+// -4 : Path error
 int fs_create(const char* path) {
     char filename[256];
     char parent_path[1024];
@@ -154,11 +154,11 @@ int fs_create(const char* path) {
 
     if(fs_getattr(parent_path, &parent_inode) == -1)
         return -1; // Parent directory not found
-    if(!(parent_inode.mode & G_IFDIR)) 
+    if(!(parent_inode.mode & G_IFDIR))
         return -4; // Parent "directory" is not a directory
-    if(!(parent_inode.mode & G_IWUSR)) 
+    if(!(parent_inode.mode & G_IWUSR))
         return -3; // No permission to write in parent directory
-    if(fs_getattr(path, &inode) == 0) 
+    if(fs_getattr(path, &inode) == 0)
         return -2; // File already exists
 
     // Creates file inode
@@ -173,8 +173,6 @@ int fs_create(const char* path) {
     inode.level3   = 0;
     update_inode(&inode);
 
-    int entry_length = 4 + 1 + strlen(filename) + 1; // Block + offset + filename + separator
-
     // Add to parent's directory data
     struct file entry;
     entry.block = inode.block;
@@ -184,10 +182,74 @@ int fs_create(const char* path) {
 
     // Update parent inode
     parent_inode.modified = time(0);
-    parent_inode.size += entry_length;
+    parent_inode.size += strlen(filename) + 6;
     update_inode(&parent_inode);
     
     return 0;
+}
+
+// Creates a directory
+// Returns:
+//  0 : Success
+// -1 : Parent directory not found
+// -2 : File already exists
+// -3 : Permission error
+// -4 : Path error
+int fs_mkdir(const char* path) {
+    char dirname[256];
+    char parent_path[1024];
+    get_filename(path, dirname);
+    get_parent(path, parent_path);
+
+    struct inode inode, parent_inode;
+
+    if(fs_getattr(parent_path, &parent_inode) == -1)
+        return -1; // Parent directory not found
+    if(!(parent_inode.mode & G_IFDIR))
+        return -4; // Parent "directory" is not a directory
+    if(!(parent_inode.mode & G_IWUSR))
+        return -3; // No permission to write in parent directory
+    if(fs_getattr(path, &inode) == 0)
+        return -2; // File already exists
+
+    // Setup inode
+    seize_inode(&inode);
+    inode.size     = 15;
+    inode.mode     = G_IFDIR | 0666;
+    inode.nlinks   = 2;
+    inode.created  = time(0);
+    inode.modified = time(0);
+    inode.level1   = 0;
+    inode.level2   = 0;
+    inode.level3   = 0;
+    update_inode(&inode);
+
+    // Setup directory data
+    struct file listing[2];
+    listing[0].block  = parent_inode.block;
+    listing[0].offset = parent_inode.offset;
+    strcpy(listing[0].name, "..");
+    listing[1].block  = inode.block;
+    listing[1].offset = inode.offset;
+    strcpy(listing[1].name, ".");
+
+    // Write in data block
+    char data[15];
+    pack_listing(listing, 2, data);
+    write_block(get_nth_block(0, &inode), data, 15);
+
+    // Update parent directory's listing
+    struct file entry;
+    entry.block  = inode.block;
+    entry.offset = inode.offset;
+    strcpy(entry.name, dirname);
+    dir_add_data(&parent_inode, &entry);
+
+    // Update parent inode
+    parent_inode.modified = time(0);
+    parent_inode.nlinks += 1;
+    parent_inode.size += strlen(dirname) + 6;
+    update_inode(&parent_inode);
 }
 
 // Formats the "disk" i.e. posts and pins a new superblock and initializes the root directory
@@ -306,10 +368,19 @@ BID get_nth_block(long n, struct inode* inode) {
     // seize new block when block address found is 0
     if(n < 512) {
         // Level 1
+        if(inode->level1 == 0) {
+            inode->level1 = seize_block();
+            update_inode(inode);
+        }
+
         char data[2048];
         read_block(inode->level1, data);
 
         struct block_pointers* level1 = (struct block_pointers*) data;
+        if(level1->blocks[n] == 0) {
+            level1->blocks[n] = seize_block();
+            write_block(inode->level1, (char*) level1, 2048);
+        }
 
         return level1->blocks[n];
     } else if( n-512 < 512*512 ) {
