@@ -7,12 +7,13 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #define PACKED          __attribute__((__packed__)) 
 
 #define DEBUG
 
-#define TIMEOUT         1.0
+#define TIMEOUT         3.0
 #define BLOCK_SIZE      2048
 #define INODE_SIZE      32
 #define BLOCK_ADDR      5

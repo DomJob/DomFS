@@ -13,8 +13,9 @@ int seize_inode(struct inode* inode);
 int get_filename(const char* path, char *filename);
 int get_parent(const char* path, char* parent);
 int dir_add_data(struct inode* inode, struct file* entry);
-long min(long a, long b) { return a < b? a : b; }
 int add_to_listing(struct file* old, struct file* new, int nb);
+long min(long a, long b) { return a < b ? a : b; }
+long max(long a, long b) { return a > b ? a : b; }
 
 // Load superblock, format if superblock isn't valid or if no message is pinned
 int fs_initialize() {
@@ -171,6 +172,7 @@ int fs_create(const char* path) {
     inode.level1   = 0;
     inode.level2   = 0;
     inode.level3   = 0;
+    printf("Create - update inode\n");
     update_inode(&inode);
 
     // Add to parent's directory data
@@ -178,11 +180,13 @@ int fs_create(const char* path) {
     entry.block = inode.block;
     entry.offset = inode.offset;
     strcpy(entry.name, filename);
+    printf("Create - add to dir data\n");
     dir_add_data(&parent_inode, &entry);
 
     // Update parent inode
     parent_inode.modified = time(0);
     parent_inode.size += strlen(filename) + 6;
+    printf("Create - update parent\n");
     update_inode(&parent_inode);
     
     return 0;
@@ -250,6 +254,58 @@ int fs_mkdir(const char* path) {
     parent_inode.nlinks += 1;
     parent_inode.size += strlen(dirname) + 6;
     update_inode(&parent_inode);
+}
+
+// Writes `length` bytes from buffer in file starting from specified offset
+// Returns:
+// ≥0 : Number of bytes written
+// -1 : File not found
+// -2 : Permission error
+// -3 : File isn't a regular file
+// -4 : Offset too big
+int fs_write(const char* path, char* buffer, int offset, int length) {
+    struct inode inode;
+
+    if(fs_getattr(path, &inode) == -1)
+        return -1;
+    if(!(inode.mode & G_IWUSR))
+        return -2;
+    if(!(inode.mode & G_IFREG))
+        return -3;
+    printf("Offset: %d, size: %d\n", offset, inode.size);
+    if(offset > inode.size)
+        return -4;
+
+    // Update inode
+    inode.modified = time(0);
+    inode.size = max(offset+length, inode.size);
+    update_inode(&inode);
+
+    // Write in data blocks
+
+    int p = 0;
+    int nbBytesLeft = length;
+    int block = offset / 2048;
+    int pos_in_block = offset % 2048;
+    char data[2048];
+
+    while(nbBytesLeft > 0) {
+        BID addr = get_nth_block(block++, &inode);
+        read_block(addr, data);
+
+        int w=0;
+        for(int i=pos_in_block; i < min(2048, pos_in_block + nbBytesLeft); i++) {
+            data[i] = buffer[p++];
+            w++;
+        }
+
+        write_block(addr, data, 2048);
+
+        nbBytesLeft -= w;
+        pos_in_block = 0;
+    }
+
+    return p;
 }
 
 // Formats the "disk" i.e. posts and pins a new superblock and initializes the root directory

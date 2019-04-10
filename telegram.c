@@ -197,11 +197,16 @@ void tg_pin_message(BID id) {
 }
 
 int tg_edit_message(BID id, char* message) {
+    char extra[50];
+    sprintf(extra,
+        "message%dedited",
+        counter++);
     char req[5500];
     sprintf(req,
-        "{\"@type\": \"editMessageText\", \"chat_id\": \"%s\", \"message_id\" : %d, \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"messageedited\"}",
-        tg_data.chat, id << 20, message, strlen(message));
+        "{\"@type\": \"editMessageText\", \"chat_id\": \"%s\", \"message_id\" : %d, \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"%s\"}",
+        tg_data.chat, id << 20, message, strlen(message), extra);
     
+    printf("Req extra: %s\n\n  ", extra);
     td_json_client_send(client, req);
 
     char* event;
@@ -210,7 +215,13 @@ int tg_edit_message(BID id, char* message) {
         event = td_json_client_receive(client, TIMEOUT);
         if(!event) 
             break;
-        if(strstr(event, "messageedited") != NULL) {
+        if(strstr(event, extra) != NULL) {
+            printf("EDIT -- %s\n", event);
+            ok = 0;
+            break;
+        }
+        if(strstr(event, "error") != NULL) {
+            printf("EDIT ERROR? -- %s\n", event);
             ok = 0;
             break;
         }

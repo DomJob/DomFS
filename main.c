@@ -6,18 +6,22 @@ void print_inode(struct inode*);
 int main(int argc, char **argv) {
     tg_initialize();
     fs_initialize();
-
-    fs_mkdir("/test3");
-    fs_create("/test3/a2.txt");
-    fs_mkdir("/test3/test");
-    fs_create("/test3/test/k.txt");
-
+   
     struct inode i;
-    int r = fs_getattr("/test3/test/k.txt", &i);
-    printf("r: %d\n", r);
-    if(r == 0) {
-        print_inode(&i);
+    int r = fs_create("/hello.txt");
+    printf("Creation: %d\n", r);
+    
+    fs_getattr("/hello.txt", &i);
+    print_inode(&i);
+
+    for(int i=0;i<2040;i+=10) {
+        int k = fs_write("/hello.txt", "123456789 ", i, 10);
+        printf("Written: %d\n", k);
     }
+
+    fs_getattr("/hello.txt", &i);
+    print_inode(&i);
+
     tg_close();
 
     return 0;
