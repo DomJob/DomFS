@@ -1,3 +1,5 @@
+**Project on standby until I figure out a better structure to get around harsh rate limits**
+
 **This is still a work in progress.**
 
 # DomFS
