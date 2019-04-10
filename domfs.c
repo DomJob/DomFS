@@ -179,14 +179,14 @@ int fs_create(const char* path) {
     struct file entry;
     entry.block = inode.block;
     entry.offset = inode.offset;
-    entry.name = filename;
+    strcpy(entry.name, filename);
     dir_add_data(&parent_inode, &entry);
 
     // Update parent inode
     parent_inode.modified = time(0);
     parent_inode.size += entry_length;
     update_inode(&parent_inode);
-        
+    
     return 0;
 }
 
@@ -209,11 +209,11 @@ int fs_format() {
     struct file listing[2];
     listing[0].block  = superblock.root_inode;
     listing[0].offset = 0;
-    listing[0].name   = ".";
+    strcpy(listing[0].name, ".");
 
     listing[1].block  = superblock.root_inode;
     listing[1].offset = 0;
-    listing[1].name   = "..";
+    strcpy(listing[1].name, "..");
     
     char data[2048];
     int len = pack_listing(listing, 2, data);
@@ -266,11 +266,13 @@ int seize_inode(struct inode* inode) {
         }
     }
 
-    // No free inode found in block
+    // No free inode found in block, seize new one
     superblock.next_inode = seize_block();
     update_superblock();
     inode->block = superblock.next_inode;
     inode->offset = 0;
+
+    return 0;
 }
 
 int update_superblock() {
@@ -295,6 +297,10 @@ int update_inode(struct inode* inode) {
     return 0;
 }
 
+// Returns the address of the nth data block
+// belonging to a given inode. Is in charge of following links
+// between blocks from 1, 2 or 3 levels of references.
+// Seizes new blocks if they're not available.
 BID get_nth_block(long n, struct inode* inode) {
     // TODO: Level 2 & 3,
     // seize new block when block address found is 0
@@ -316,6 +322,8 @@ BID get_nth_block(long n, struct inode* inode) {
     }
 }
 
+// Pack a list of files into a binary string
+// buffer must have enough space
 long pack_listing(struct file* listing, int nbFiles, char* buffer) {
     long c=0;
 
@@ -333,38 +341,39 @@ long pack_listing(struct file* listing, int nbFiles, char* buffer) {
     return c;
 }
 
+// Get the list of files from a binary string
 int unpack_listing(struct file* listing, char* packed, long length, int nbFiles) {
-    printf("K");
+    char name[256][nbFiles];
     int name_pos = -2;
-    char bin_block[4];
+    char bin_block[5];
     int bin_block_pos = 0;
     int f = 0;
+    char byte;
 
     for(int i=0; i<length; i++) {
-        char byte = packed[i];
-        printf("%x ", byte & 0xFF);
+        byte = packed[i];
         if(name_pos == -2) {
             // Block
             bin_block[bin_block_pos++] = byte;
-
-            if(bin_block_pos == 5) {
+            if(bin_block_pos == 4) {
                 bin_block_pos = 0;
                 name_pos = -1;
-                //listing[f].block = *((BID*) bin_block);
+                listing[f].block = *((BID*) bin_block);
             }
         } else if (name_pos == -1) {
             // Offset
-            //listing[f].offset = byte;
+            listing[f].offset = byte;
             name_pos = 0;
         } else {
             if(byte == 0x03) {
                 // End of file name
-                //name[f][name_pos] = 0x00;
-                //listing[f].name = "ect";// = name[f];
+                name[f][name_pos] = 0x00;
+                strcpy(listing[f].name, name[f]);
+                
                 name_pos = -2;
                 f++;
             } else {
-                //name[f][name_pos++] = byte;
+                name[f][name_pos++] = byte;
             }
         }
     }
@@ -395,61 +404,25 @@ int dir_add_data(struct inode* inode, struct file* entry) {
             }
             pos++;
         }
-
         nbBytesRead += i;
     }
 
     // Parse entire data fetched in old_data into a list of files
-    struct file entries[nbFiles];
-
-    char bin_block[4];
-    char bin_block_pos = 0;
-    char name[256];
-    char names[256][nbFiles];
-    int name_pos = -2;
-
-    int p=0;    
-    int i=0;
-    while(p < size) {
-        char byte = old_data[p++];
-        if(name_pos == -2) {
-            // Parsing block address
-            bin_block[bin_block_pos++] = byte;
-
-            if(bin_block_pos == 4) {
-                entries[i].block = *((BID*) bin_block);
-                name_pos = -1;
-                bin_block_pos = 0;
-            }
-        } else if (name_pos == -1) {
-            // Parsing offset
-            entries[i].offset = byte;
-            name_pos = 0;
-        } else {
-            // Parsing file name;
-            if(byte == 0x03) {
-                names[i][name_pos++] = 0;
-                entries[i].name = names[i];
-                name_pos = -2;
-                i++;
-            } else {
-                names[i][name_pos++] = byte;
-            }
-        }
-    }
+    struct file old_listing[nbFiles];
+    unpack_listing(old_listing, old_data, size, nbFiles);
 
     // Add new entry where it belongs
     struct file new_listing[nbFiles+1];
-    new_listing[0].name = entry->name;
+    strcpy(new_listing[0].name, entry->name);
     new_listing[0].block = entry->block;
     new_listing[0].offset = entry->offset;
 
-    add_to_listing(entries, new_listing, nbFiles+1);
+    add_to_listing(old_listing, new_listing, nbFiles+1);
 
     // Pack new list and write in blocks
     char new_data[size + strlen(entry->name) + 6];
-
     int newSize = pack_listing(new_listing, nbFiles+1, new_data);
+
     int nbBytesWritten = 0;
     block = 0;
     int c = 0;
@@ -472,14 +445,14 @@ int add_to_listing(struct file* old, struct file* new, int nb) {
     for(int i=0; i<nb; i++) {
         if(!added) {
             if(i==nb-1 || strcmp(old[i].name, entry.name) > 0) {
-                new[i].name = entry.name;
+                strcpy(new[i].name, entry.name);
                 new[i].block = entry.block;
                 new[i].offset = entry.offset;
                 added = 1;
             }
         }
         if(i < nb-1) {
-            new[i+added].name = old[i].name;
+            strcpy(new[i+added].name, old[i].name);
             new[i+added].block = old[i].block;
             new[i+added].offset = old[i].offset;
         }

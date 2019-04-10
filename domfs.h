@@ -29,7 +29,7 @@ struct PACKED inode {
 struct PACKED file {
     BID block;
     uint8_t offset;
-    char* name;
+    char name[256];
 };
 
 struct block_pointers {
