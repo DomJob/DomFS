@@ -364,8 +364,8 @@ int update_inode(struct inode* inode) {
 // between blocks from 1, 2 or 3 levels of references.
 // Seizes new blocks if they're not available.
 BID get_nth_block(long n, struct inode* inode) {
-    // TODO: Level 2 & 3,
-    // seize new block when block address found is 0
+    char data[2048];
+    
     if(n < 512) {
         // Level 1
         if(inode->level1 == 0) {
@@ -373,7 +373,6 @@ BID get_nth_block(long n, struct inode* inode) {
             update_inode(inode);
         }
 
-        char data[2048];
         read_block(inode->level1, data);
 
         struct block_pointers* level1 = (struct block_pointers*) data;
@@ -385,11 +384,70 @@ BID get_nth_block(long n, struct inode* inode) {
         return level1->blocks[n];
     } else if( n-512 < 512*512 ) {
         // Level 2
+        if(inode->level2 == 0) {
+            inode->level2 = seize_block();
+            update_inode(inode);
+        }
         n -= 512;
+        int l2 = n / 512;
+        int l1 = n % 512;
+
+        read_block(inode->level2, data);
+        struct block_pointers* level2 = (struct block_pointers*) data;
+
+        if(level2->blocks[l2] == 0) {
+            level2->blocks[l2] = seize_block();
+            write_block(inode->level2, (char*) level2, 2048);
+        }
+
+        read_block(level2->blocks[l2], data);
+        struct block_pointers* level1 = (struct block_pointers*) data;
+
+        if(level1->blocks[l1] == 0) {
+            level1->blocks[l1] = seize_block();
+            write_block(level2->blocks[l2], (char*) level2, 2048);
+        }
+
+        return level1->blocks[l1];
+        
     } else if( n-512-512*512 < 512*512*512 ) {
         // Level 3
+        if(inode->level3 == 0) {
+            inode->level3 = seize_block();
+            update_inode(inode);
+        }
         n -= (512 + 512*512);
 
+        int l3 = n / (512*512);
+        n = n % (512*512);
+        int l2 = n / 512;
+        int l1 = n % 512;
+
+        read_block(inode->level3, data);
+        struct block_pointers* level3 = (struct block_pointers*) data;
+
+        if(level3->blocks[l3] == 0) {
+            level3->blocks[l3] = seize_block();
+            write_block(inode->level3, (char*) level3, 2048);
+        }
+
+        read_block(level3->blocks[l3], data);
+        struct block_pointers* level2 = (struct block_pointers*) data;
+
+        if(level2->blocks[l2] == 0){
+            level2->blocks[l2] = seize_block();
+            write_block(level3->blocks[l3], (char*) level2, 2048);
+        }
+
+        read_block(level2->blocks[l2], data);
+        struct block_pointers* level1 = (struct block_pointers*) data;
+
+        if(level1->blocks[l1] == 0){
+            level2->blocks[l1] = seize_block();
+            write_block(level2->blocks[l1], (char*) level2, 2048);
+        }
+
+        return level1->blocks[l1];
     }
 }
 
