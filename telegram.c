@@ -138,7 +138,7 @@ int tg_read_message(BID id, char* message) {
     if(!event)
         return -1;
     if(strstr(event, "error") != NULL) {
-        printf("ERROR READING MESSAGE %d:\n%s\n", id >> 20, event);
+        DPRINT("ERROR READING MESSAGE %d:\n%s\n", id >> 20, event);
         return -1;
     }
 
@@ -207,7 +207,6 @@ int tg_edit_message(BID id, char* message) {
         "{\"@type\": \"editMessageText\", \"chat_id\": \"%s\", \"message_id\" : %d, \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"%s\"}",
         tg_data.chat, id << 20, message, strlen(message), extra);
     
-    printf("Req extra: %s\n\n  ", extra);
     td_json_client_send(client, req);
 
     char* event;
@@ -217,11 +216,11 @@ int tg_edit_message(BID id, char* message) {
         if(!event) 
             break;
         if(strstr(event, extra) != NULL && strstr(event, "error") != NULL) {
-            printf("EDIT ERROR? -- %s\n", event);
+            DPRINT("EDIT ERROR -- %s\n", event);
             break;
         }
         if(strstr(event, extra) != NULL) {
-            printf("EDIT -- %s\n", event);
+            DPRINT("EDIT -- %s\n", event);
             ok = 0;
             break;
         }
@@ -278,7 +277,11 @@ void tg_delete_message(BID id) {
 void tg_parse_data() {
     char path[1000];
     FILE* ini_file = fopen("./config.ini", "r");
-
+    if(ini_file == NULL) {
+        printf("Error: config.ini not found.\n");
+        tg_close();
+        exit(1);
+    }
     char key[10];
     char* value = key;
     int i = 0;
@@ -371,7 +374,6 @@ void tg_setup_chat() {
         if(!event)
             break;
         if(strstr(event, "setuprequest") != NULL) {
-            //printf("Req: %s\n", event);
             break;
         }
     }
@@ -413,6 +415,11 @@ void tg_setup_chat() {
     // Save data to file
 
     FILE* ini_file = fopen("./config.ini", "w");
+    if(ini_file == NULL) {
+        printf("Error: Can't write to config.ini.\n");
+        tg_close();
+        exit(1);
+    }
     fprintf(ini_file,
         "api_id = %s\napi_hash = %s\nchat = %s\nsupergroup = %s",
         tg_data.api_id, tg_data.api_hash, tg_data.chat, tg_data.supergroup);
