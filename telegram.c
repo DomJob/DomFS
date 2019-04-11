@@ -189,6 +189,7 @@ void tg_pin_message(BID id) {
         if(strstr(event, "updateChatLastMessage") != NULL && strstr(event, "messagePinMessage") != NULL) {
             unsigned int announceId = parse_id(event);
             tg_delete_message(announceId >> 20);
+            break;
         }
         if(strstr(event, "deletepinannouncement") != NULL) {
             break;
@@ -254,7 +255,6 @@ BID tg_get_pinned_message() {
         DPRINT("something went wrong - %s\n", event);
         return 0;
     }
-        
 
     return parse_id(event) >> 20;
 }

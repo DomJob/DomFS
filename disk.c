@@ -3,10 +3,21 @@
 char hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 char hex2byte(char first, char second);
 
+BID counter = 1;
+
+void disk_initialize() {
+    mkdir("./cache", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+}
+
 BID seize_block() {
     char* msg = "0";
 
-    return tg_send_message(msg);
+    while(1) {
+        BID id = tg_send_message(msg);
+        if(id != 0)
+            return id;
+        sleep(1);
+    }
 }
 
 void read_block(BID id, char* data) {
@@ -18,8 +29,25 @@ void read_block(BID id, char* data) {
         hexdata[2*i+1] = '0';
     }
 
-    tg_read_message(id, hexdata);
+    char filename[21];
+    sprintf(filename, "./cache/%d.blk", id);
+    FILE* fp = fopen(filename, "r");
+    
+    if(fp != NULL) {
+        // Read from cache if file exists
+        for(int i=0; i<4096; i++) {
+            char nibble = fgetc(fp);
+            if(nibble == EOF)
+                break;
+            hexdata[i] = nibble;
+        }
+        fclose(fp);
+    } else {
+        // Read from Telegram otherwise
+        tg_read_message(id, hexdata);
+    }
 
+    // Convert hexdata to ascii bytes
     for(int i=0; i<BLOCK_SIZE; i++) {
         char h1 = hexdata[2*i];
         char h2 = hexdata[2*i+1];
@@ -45,12 +73,13 @@ void write_block(BID id, char* data, int length) {
     }
     hexdata[hexlen+1] = '\0';
 
-    while(1) {
-        int res = tg_edit_message(id, hexdata);
-        if(res == 0)
-            break;
-        sleep(1);
-    }
+    // Write to a (possibly new) cache file in all cases
+    // Another thread is in charge of actually editing blocks on a schedule
+    char filename[21];
+    sprintf(filename, "./cache/%d.blk", id);
+    FILE* fp = fopen(filename, "w");
+    fprintf(fp, "%s", hexdata);
+    fclose(fp);
 }
 
 BID get_superblock() {

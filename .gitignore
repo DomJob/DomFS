@@ -2,5 +2,6 @@ domfs
 .vscode/
 *.o
 data/
+cache/
 client.log*
 config.ini
