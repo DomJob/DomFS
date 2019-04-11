@@ -29,7 +29,7 @@ void read_block(BID id, char* data) {
 }
 
 void write_block(BID id, char* data, int length) {
-    char hexdata[2*length+1];
+    char hexdata[2*length];
 
     for(int i=0; i<length; i++) {
         unsigned char byte = data[i];
@@ -39,12 +39,18 @@ void write_block(BID id, char* data, int length) {
 
     // Trim right-most zeros 
     int hexlen;
-    for(hexlen = 2*length; hexlen>1; hexlen--) {
+    for(hexlen = 2*length-1; hexlen>1; hexlen--) {
         if(hexdata[hexlen] != '0') 
             break;
     }
     hexdata[hexlen+1] = '\0';
-    tg_edit_message(id, hexdata);
+
+    while(1) {
+        int res = tg_edit_message(id, hexdata);
+        if(res == 0)
+            break;
+        sleep(1);
+    }
 }
 
 BID get_superblock() {

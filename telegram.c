@@ -215,19 +215,18 @@ int tg_edit_message(BID id, char* message) {
         event = td_json_client_receive(client, TIMEOUT);
         if(!event) 
             break;
+        if(strstr(event, extra) != NULL && strstr(event, "error") != NULL) {
+            printf("EDIT ERROR? -- %s\n", event);
+            break;
+        }
         if(strstr(event, extra) != NULL) {
             printf("EDIT -- %s\n", event);
             ok = 0;
             break;
         }
-        if(strstr(event, "error") != NULL) {
-            printf("EDIT ERROR? -- %s\n", event);
-            ok = 0;
-            break;
-        }
     }
 
-    return 0;
+    return ok;
 }
 
 BID tg_get_pinned_message() {
