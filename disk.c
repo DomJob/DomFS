@@ -4,7 +4,6 @@ char hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',
 char hex2byte(char first, char second);
 
 int mounted;
-BID counter = 1;
 pthread_t write_thread;
 void *write_loop();
 
@@ -24,7 +23,7 @@ BID seize_block() {
 
     while(1) {
         BID id = tg_send_message(msg);
-        if(id != 0)
+        if(id > 0)
             return id;
         sleep(1);
     }

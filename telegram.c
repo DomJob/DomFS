@@ -96,7 +96,7 @@ BID tg_send_message(char* message) {
         if(!event)
             return 0;
         if(strstr(event, "updateMessageSendSucceeded") != NULL) {
-            DPRINT("tg_send_message result: %s\n", event);
+            //DPRINT("tg_send_message result: %s\n", event);
             success = 1;
             break;
         }
@@ -212,6 +212,10 @@ int tg_edit_message(BID id, char* message) {
     char* event;
     int ok = -1;
     while(1) {
+        if(!client) {
+            printf("Explain how.\n");
+            exit(1);
+        }
         event = td_json_client_receive(client, TIMEOUT);
         if(!event) 
             break;

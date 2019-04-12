@@ -216,9 +216,9 @@ int fs_mkdir(const char* path) {
     dir_add_data(&parent_inode, &entry);
 
     // Update parent inode
-    parent_inode.modified = time(0);
-    parent_inode.nfiles += 1;
-    parent_inode.size += strlen(dirname) + 6;
+    parent_inode.modified  = time(0);
+    parent_inode.nfiles   += 1;
+    parent_inode.size     += strlen(dirname) + 6;
     update_inode(&parent_inode);
 }
 
@@ -373,8 +373,82 @@ int fs_chmod(const char* path, uint8_t new_mode) {
     if(inode.mode & M_IFLNK)
         new_mode |= M_IFLNK;
 
-    inode.mode = new_mode;
+    inode.modified = time(0);
+    inode.mode     = new_mode;
     update_inode(&inode);
+    return 0;
+}
+
+// Removes a file entry from its parent directory listing
+// Returns:
+//  0 : Success
+// -1 : Not found
+// -2 : Not a regular file
+// -3 : Permission error
+int fs_unlink(const char* path) {
+    struct inode inode, parent_inode;
+    
+    if(fs_getattr(path, &inode) == -1)
+        return -1;
+    if(!(inode.mode & M_IFREG))
+        return -2;
+    if(!(inode.mode & M_PWRITE))
+        return -3;
+
+    char parent[1024];
+    char filename[256];
+    get_filename(path, filename);
+    get_parent(path, parent);
+  
+    
+    fs_getattr(parent, &parent_inode);
+    if(!(parent_inode.mode & M_PWRITE))
+        return -3;
+
+    // Remove file from parent's listing
+    struct file* old_listing;
+    int n = fs_readdir(parent, &old_listing);
+    struct file new_listing[n-1];
+
+    int skipped = 0;
+    for(int i=0; i<n; i++) {
+        if(strcmp(old_listing[i].name, filename) == 0) {
+            skipped = 1;
+            continue;
+        }
+        new_listing[i-skipped].block = old_listing[i].block;
+        new_listing[i-skipped].offset = old_listing[i].offset;
+        strcpy(new_listing[i-skipped].name, old_listing[i].name);
+    }
+
+    free(old_listing);
+
+    // Update parent's data blocks
+    uint64_t newSize = parent_inode.size - strlen(filename) - 6;
+    char newdata[newSize];
+    int len = pack_listing(new_listing, n-1, newdata);
+
+    int nbBytesWritten = 0;
+    BID block = 0;
+    int c = 0;
+    while(nbBytesWritten < newSize) {
+        char data[2048];
+        int i;
+        int blocksize = min(2048, newSize-nbBytesWritten);
+
+        for(i=0; i<blocksize; i++)
+            data[i] = newdata[c++];
+
+        write_block(get_nth_block(block++, &parent_inode), data, blocksize);
+        nbBytesWritten += i;
+    }
+
+    // Update parent inode
+    parent_inode.nfiles  -= 1;
+    parent_inode.size     = newSize;
+    parent_inode.modified = time(0);
+    update_inode(&parent_inode);
+
     return 0;
 }
 
@@ -397,6 +471,7 @@ int fs_truncate(const char* path, uint64_t length) {
         return inode.size;
 
     inode.size = length;
+    inode.modified = time(0);
     update_inode(&inode);
     return inode.size;
 }
