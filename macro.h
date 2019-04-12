@@ -8,6 +8,8 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <dirent.h>
 
 #define PACKED          __attribute__((__packed__)) 
 
@@ -44,7 +46,7 @@
 #ifdef DEBUG
 #define DPRINT(...) printf( __VA_ARGS__ );
 #else
-#define DPRINT(...) do{ } while ( 0 )
+#define DPRINT(...) do{ } while ( 0 );
 #endif
 
 

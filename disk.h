@@ -7,6 +7,7 @@
 BID seize_block();
 
 void disk_initialize();
+void disk_release();
 
 void read_block(BID id, char* data);
 void write_block(BID id, char* data, int length);

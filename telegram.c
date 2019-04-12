@@ -220,7 +220,7 @@ int tg_edit_message(BID id, char* message) {
             break;
         }
         if(strstr(event, extra) != NULL) {
-            DPRINT("EDIT -- %s\n", event);
+            //DPRINT("EDIT -- %s\n", event);
             ok = 0;
             break;
         }

@@ -272,7 +272,6 @@ int fs_write(const char* path, char* buffer, int offset, int length) {
         return -2;
     if(!(inode.mode & G_IFREG))
         return -3;
-    printf("Offset: %d, size: %d\n", offset, inode.size);
     if(offset > inode.size)
         return -4;
 

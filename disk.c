@@ -3,10 +3,20 @@
 char hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 char hex2byte(char first, char second);
 
+int mounted;
 BID counter = 1;
+pthread_t write_thread;
+void *write_loop();
 
 void disk_initialize() {
     mkdir("./cache", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    pthread_create(&write_thread, NULL, write_loop, NULL);
+    mounted = 1;
+}
+
+void disk_release() {
+    mounted = 0;
+    pthread_join(write_thread, NULL);
 }
 
 BID seize_block() {
@@ -73,8 +83,8 @@ void write_block(BID id, char* data, int length) {
     }
     hexdata[hexlen+1] = '\0';
 
-    // Write to a (possibly new) cache file in all cases
-    // Another thread is in charge of actually editing blocks on a schedule
+    // Write to a (possibly new) cache file
+    // write_thread is in charge of actually committing block edits
     char filename[21];
     sprintf(filename, "./cache/%d.blk", id);
     FILE* fp = fopen(filename, "w");
@@ -104,4 +114,66 @@ char hex2byte(char first, char second) {
     second -= 48;
     char byte = (first << 4) + second;
     return byte;
+}
+
+// This function is to be run in a separate thread.
+// It is in charge of writing cached blocks to Telegram
+// Pick a .blk file -> commit changes -> delete .blk file
+// It basically has the job of avoiding Telegram's rate limit
+// by minimizing how many edit requests are actually made
+void *write_loop() {
+    int empty = 0;
+    while(mounted || !empty) {
+        DIR* d = opendir("./cache");
+        struct dirent *file = readdir(d);
+        empty = 0;
+
+        while(file != NULL && (strcmp(file->d_name, ".") == 0 || strcmp(file->d_name, "..") == 0)) {
+            file = readdir(d);
+        }
+        if(file == NULL) {
+            empty = 1;
+            sleep(1);
+            continue;
+        }
+
+        char* name = file->d_name;
+
+        BID block_id = 0;
+        for(int i=0; i<strlen(name); i++) {
+            if(name[i] == '.')
+                break;
+            block_id *= 10;
+            block_id += (name[i] - 48);
+        }
+        
+        char path[25];
+        sprintf(path, "./cache/%s", name);
+        FILE* f = fopen(path, "r");
+        if(f == NULL) {
+            printf("%s how come?\n", path);
+            sleep(1);
+            continue;
+        }
+        char data[4096];
+        int i;
+        for(i=0; i<4096; i++) {
+            char c = fgetc(f);
+            if(c == EOF) {
+                data[i] = 0;
+                break;
+            }
+            data[i] = c;
+        }
+        
+        int success = -1;
+        while(!success == -1) {
+            success = tg_edit_message(block_id, data);
+            sleep(1);
+        }
+        
+        unlink(path);
+        
+        sleep(1);
+    }
 }
