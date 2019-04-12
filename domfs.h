@@ -51,7 +51,7 @@ int fs_write(const char* path, char* buffer, int offset, int length);
 int fs_read(const char* path, char* buffer, int offset, int length);
 int fs_readdir(const char* path, struct file** listing);
 int fs_chmod(const char* path, uint8_t new_mode);
-int fs_hardlink(const char* source, char* dest);
+int fs_hardlink(const char* source, const char* dest);
 int fs_unlink(const char* path);
 int fs_rmdir(const char* path);
 int fs_rename(const char* source, char* dest);

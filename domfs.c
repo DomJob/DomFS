@@ -379,6 +379,48 @@ int fs_chmod(const char* path, uint8_t new_mode) {
     return 0;
 }
 
+// Creates a hard link from source to dest
+// Returns:
+//  0 : Success
+// -1 : Source not found
+// -2 : Source is not a regular file
+// -3 : Destination already exists
+// -4 : Destination directory not found
+int fs_hardlink(const char* source, const char* dest) {
+    char source_filename[256];
+    char dest_parent[1024];
+    char dest_filename[256];
+
+    get_filename(source, source_filename);
+    get_filename(dest, dest_filename);
+    get_parent(dest, dest_parent);
+
+    struct inode source_inode, dest_parent_inode, dest_inode;
+    if(fs_getattr(source, &source_inode) == -1)
+        return -1;
+    if(!(source_inode.mode & M_IFREG))
+        return -2;
+    if(fs_getattr(dest, &dest_inode) == 0)
+        return -3;
+    if(fs_getattr(dest_parent, &dest_parent_inode) == -1)
+        return -4;
+
+    // Add a new entry pointing to source's inode address
+    // in dest_parent's directory data
+    struct file entry;
+    entry.block = source_inode.block;
+    entry.offset = source_inode.offset;
+    strcpy(entry.name, dest_filename);
+
+    dir_add_data(&dest_parent_inode, &entry);
+
+    // Update dest_parent
+    dest_parent_inode.size     += 6 + strlen(dest_filename);
+    dest_parent_inode.nfiles   += 1;
+    dest_parent_inode.modified  = time(0);
+    update_inode(&dest_parent_inode);
+}
+
 // Removes a file entry from its parent directory listing
 // Returns:
 //  0 : Success
@@ -743,7 +785,7 @@ int dir_add_data(struct inode* inode, struct file* entry) {
     long nbBytesRead = 0;
     int pos = 0;
 
-    // Read entire dir data and get the number of files at the same time
+    // Read entire dir data
     while(nbBytesRead < size) {
         read_block(get_nth_block(block++, inode), buffer);
         int i;
@@ -807,31 +849,6 @@ int add_to_listing(struct file* old, struct file* new, int nb) {
     }
 }
 
-void print_inode(struct inode *i) {
-    char mode[] = "----";
-    if(i->mode & M_IFDIR)
-        mode[0] = 'd';
-    else if(i->mode & M_IFLNK)
-        mode[0] = 'l';
-    if(i->mode & M_PREAD)
-        mode[1] = 'r';
-    if(i->mode & M_PWRITE)
-        mode[2] = 'w';
-    if(i->mode & M_PEXEC)
-        mode[3] = 'x';
-
-    printf("--- Inode ---\n");
-    printf("Address:  %d | Offset %d\n", i->block, i->offset);
-    printf("Size:     %d\n", i->size);
-    printf("Mode:     %s (%d)\n", mode, i->mode);
-    printf("nfiles:   %d\n", i->nfiles);
-    printf("Created:  %d\n", i->created);
-    printf("Modified: %d\n", i->modified);
-    printf("Level1:   %d\n", i->level1);
-    printf("Level2:   %d\n", i->level2);
-    printf("Level3:   %d\n", i->level3);
-}
-
 int get_filename(const char *path, char *filename) {
 	char *pStrippedFilename = strrchr(path,'/');
 	if (pStrippedFilename!=NULL) {
@@ -863,4 +880,64 @@ int get_parent(const char *path, char *parent) {
 		parent[len] = '\0';
 	}
 	return 1;
+}
+
+void print_inode(struct inode *i) {
+    char mode[] = "----";
+    if(i->mode & M_IFDIR)
+        mode[0] = 'd';
+    else if(i->mode & M_IFLNK)
+        mode[0] = 'l';
+    if(i->mode & M_PREAD)
+        mode[1] = 'r';
+    if(i->mode & M_PWRITE)
+        mode[2] = 'w';
+    if(i->mode & M_PEXEC)
+        mode[3] = 'x';
+
+    printf("--- Inode ---\n");
+    printf("Address:  %d | Offset %d\n", i->block, i->offset);
+    printf("Size:     %d\n", i->size);
+    printf("Mode:     %s (%d)\n", mode, i->mode);
+    printf("nfiles:   %d\n", i->nfiles);
+    printf("Created:  %d\n", i->created);
+    printf("Modified: %d\n", i->modified);
+    printf("Level1:   %d\n", i->level1);
+    printf("Level2:   %d\n", i->level2);
+    printf("Level3:   %d\n", i->level3);
+}
+
+void list_directory(const char* path) {
+    struct file* listing;
+
+    int n = fs_readdir(path, &listing);
+
+    if(n < 0) {
+        printf("Error %d reading %s.\n", n, path);
+        free(listing);
+        return;
+    }
+
+    printf("Directory listing for %s\n\n", path);
+    for(int i=0;i<n;i++) {
+        char fullpath[1024];
+        
+        sprintf(fullpath, "%s/%s", path, listing[i].name);
+        struct inode inode = get_inode(listing[i].block, listing[i].offset);
+        char mode[] = "----";
+        if(inode.mode & M_IFDIR)
+            mode[0] = 'd';
+        else if(inode.mode & M_IFLNK)
+            mode[0] = 'l';
+        if(inode.mode & M_PREAD)
+            mode[1] = 'r';
+        if(inode.mode & M_PWRITE)
+            mode[2] = 'w';
+        if(inode.mode & M_PEXEC)
+            mode[3] = 'x';
+
+        printf("%s\t(%d|%d)\t%d\t%s\n", mode, inode.block, inode.offset, inode.size, listing[i].name);
+    }
+
+    free(listing);
 }
