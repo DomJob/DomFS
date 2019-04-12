@@ -73,51 +73,19 @@ int fs_getattr(const char* path, struct inode* inode) {
             return -1;
 
         // Find the file's inode from its entries
-        char tmpname[256];
-        int tmpname_pos = -2;
-
-        char block_bin[4];
-        uint8_t block_bin_pos = 0;
-        
-        char data[2048];
         int found = 0;
-        for(int blockno = 0; blockno < parent_inode.size / 2048 + 1; blockno++) {
-            int addr = get_nth_block(blockno, &parent_inode);
-            read_block(addr, data);
+        struct file* listing;
 
-            for(int i=0; i<2048; i++) {
-                if(tmpname_pos == -2) {
-                    // Reading inode block (4 bytes)
-                    block_bin[block_bin_pos++] = data[i];
-
-                    if(block_bin_pos == 4) {
-                        block_bin_pos = 0;
-                        tmpname_pos = -1;
-                        block = *((uint16_t*) block_bin);
-                        if(block == 0) // Invalid block id, thus end of listing reached
-                            break;
-                    }
-                } else if(tmpname_pos == -1) {
-                    // Reading offset (1 byte)
-                    offset = data[i];
-                    tmpname_pos = 0;
-                } else {
-                    // Reading file name (1-255 bytes)
-                    char byte = data[i];
-                    if(byte == 0x03) { // End of file name reached
-                        tmpname[tmpname_pos] = 0x00;
-                        if(strcmp(tmpname, filename) == 0) {
-                            // File name found
-                            found = 1;
-                            break;
-                        }
-                        tmpname_pos = -2;
-                    } else {
-                        tmpname[tmpname_pos++] = byte;
-                    }
-                }
+        int nbFiles = fs_readdir(parent, &listing);
+        for(int i=0; i<nbFiles; i++) {
+            if(strcmp(listing[i].name, filename) == 0) {
+                found  = 1;
+                block  = listing[i].block;
+                offset = listing[i].offset;
             }
         }
+        
+        free(listing);
 
         if(!found)
             return -1;
@@ -366,10 +334,8 @@ int fs_readdir(const char* path, struct file** listing) {
     if(!(inode.mode & M_IFDIR))
         return -3;
 
+    // Read entire dir data
     char rawdata[inode.size];
-
-    // Read entire dir data and get the number of files at the same time
-    int nbFiles = 0;
     char buffer[2048];
     int block = 0;
     long nbBytesRead = 0;
@@ -379,21 +345,16 @@ int fs_readdir(const char* path, struct file** listing) {
         int i;
         for(i=0; i < min(2048, inode.size - nbBytesRead); i++) {
             rawdata[nbBytesRead+i] = buffer[i];
-
-            if(pos > 5 && buffer[i] == 0x03) {
-                nbFiles++;
-                pos = 0;
-            }
             pos++;
         }
         nbBytesRead += i;
     }
 
-    (*listing) = (struct file*) malloc(nbFiles * sizeof(struct file));
+    (*listing) = (struct file*) malloc(inode.nfiles * sizeof(struct file));
 
-    unpack_listing(*listing, rawdata, inode.size, nbFiles);
+    unpack_listing(*listing, rawdata, inode.size, inode.nfiles);
 
-    return nbFiles;
+    return inode.nfiles;
 }
 
 // Formats the "disk" i.e. posts and pins a new superblock and initializes the root directory
@@ -657,7 +618,6 @@ int unpack_listing(struct file* listing, char* packed, long length, int nbFiles)
 int dir_add_data(struct inode* inode, struct file* entry) {
     long size = inode->size;
     char old_data[size];
-    int nbFiles = 0;
 
     char buffer[2048];
     int block = 0;
@@ -671,30 +631,26 @@ int dir_add_data(struct inode* inode, struct file* entry) {
         for(i=0; i < min(2048, size - nbBytesRead); i++) {
             old_data[nbBytesRead+i] = buffer[i];
 
-            if(pos > 5 && buffer[i] == 0x03) {
-                nbFiles++;
-                pos = 0;
-            }
             pos++;
         }
         nbBytesRead += i;
     }
 
     // Parse entire data fetched in old_data into a list of files
-    struct file old_listing[nbFiles];
-    unpack_listing(old_listing, old_data, size, nbFiles);
+    struct file old_listing[inode->nfiles];
+    unpack_listing(old_listing, old_data, size, inode->nfiles);
 
     // Add new entry where it belongs
-    struct file new_listing[nbFiles+1];
+    struct file new_listing[inode->nfiles+1];
     strcpy(new_listing[0].name, entry->name);
     new_listing[0].block = entry->block;
     new_listing[0].offset = entry->offset;
 
-    add_to_listing(old_listing, new_listing, nbFiles+1);
+    add_to_listing(old_listing, new_listing, inode->nfiles+1);
 
     // Pack new list and write in blocks
     char new_data[size + strlen(entry->name) + 6];
-    int newSize = pack_listing(new_listing, nbFiles+1, new_data);
+    int newSize = pack_listing(new_listing, inode->nfiles+1, new_data);
 
     int nbBytesWritten = 0;
     block = 0;
