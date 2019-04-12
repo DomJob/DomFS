@@ -494,6 +494,80 @@ int fs_unlink(const char* path) {
     return 0;
 }
 
+// Deletes directory
+// Returns:
+//  0 : Success
+// -1 : Not found
+// -2 : Not a directory
+// -3 : Directory not empty
+// -4 : Permission error
+int fs_rmdir(const char* path) {
+    struct inode inode, parent_inode;
+    char parent[1024];
+    char dirname[256];
+    get_parent(path, parent);
+    get_filename(path, dirname);
+
+    if(fs_getattr(path, &inode) == -1)
+        return -1;
+    if(!(inode.mode & M_IFDIR))
+        return -2;
+    if(inode.nfiles > 2)
+        return -3;
+    if(!(inode.mode & M_PWRITE))
+        return -4;
+
+    fs_getattr(parent, &parent_inode);
+    if(!(inode.mode & M_PWRITE))
+        return -4;
+
+    // Remove directory from parent's listing
+    struct file* old_listing;
+    int n = fs_readdir(parent, &old_listing);
+    struct file new_listing[n-1];
+
+    int skipped = 0;
+    for(int i=0; i<n; i++) {
+        if(strcmp(old_listing[i].name, dirname) == 0) {
+            skipped = 1;
+            continue;
+        }
+        new_listing[i-skipped].block = old_listing[i].block;
+        new_listing[i-skipped].offset = old_listing[i].offset;
+        strcpy(new_listing[i-skipped].name, old_listing[i].name);
+    }
+    free(old_listing);
+
+    // Update parent's data blocks
+    uint64_t newSize = parent_inode.size - strlen(dirname) - 6;
+    char newdata[newSize];
+    int len = pack_listing(new_listing, n-1, newdata);
+
+    int nbBytesWritten = 0;
+    BID block = 0;
+    int c = 0;
+    while(nbBytesWritten < newSize) {
+        char data[2048];
+        int i;
+        int blocksize = min(2048, newSize-nbBytesWritten);
+
+        for(i=0; i<blocksize; i++)
+            data[i] = newdata[c++];
+
+        write_block(get_nth_block(block++, &parent_inode), data, blocksize);
+        nbBytesWritten += i;
+    }
+
+    // Update parent inode
+    parent_inode.nfiles  -= 1;
+    parent_inode.size     = newSize;
+    parent_inode.modified = time(0);
+    update_inode(&parent_inode);
+
+    return 0;
+
+}
+
 // Truncates file
 // Returns:
 // ≥0 : New size
@@ -882,29 +956,37 @@ int get_parent(const char *path, char *parent) {
 	return 1;
 }
 
-void print_inode(struct inode *i) {
+void show_stat(const char* path) {
+    struct inode i;
+    printf("--- Info for %s ---\n", path);
+
+    if(fs_getattr(path, &i) == -1) {
+        printf("No such file or directory.\n");
+        return;
+    }
+
     char mode[] = "----";
-    if(i->mode & M_IFDIR)
+    if(i.mode & M_IFDIR)
         mode[0] = 'd';
-    else if(i->mode & M_IFLNK)
+    else if(i.mode & M_IFLNK)
         mode[0] = 'l';
-    if(i->mode & M_PREAD)
+    if(i.mode & M_PREAD)
         mode[1] = 'r';
-    if(i->mode & M_PWRITE)
+    if(i.mode & M_PWRITE)
         mode[2] = 'w';
-    if(i->mode & M_PEXEC)
+    if(i.mode & M_PEXEC)
         mode[3] = 'x';
 
-    printf("--- Inode ---\n");
-    printf("Address:  %d | Offset %d\n", i->block, i->offset);
-    printf("Size:     %d\n", i->size);
-    printf("Mode:     %s (%d)\n", mode, i->mode);
-    printf("nfiles:   %d\n", i->nfiles);
-    printf("Created:  %d\n", i->created);
-    printf("Modified: %d\n", i->modified);
-    printf("Level1:   %d\n", i->level1);
-    printf("Level2:   %d\n", i->level2);
-    printf("Level3:   %d\n", i->level3);
+
+    printf("Address:  %d | Offset %d\n", i.block, i.offset);
+    printf("Size:     %d\n", i.size);
+    printf("Mode:     %s (%d)\n", mode, i.mode);
+    printf("nfiles:   %d\n", i.nfiles);
+    printf("Created:  %d\n", i.created);
+    printf("Modified: %d\n", i.modified);
+    printf("Level1:   %d\n", i.level1);
+    printf("Level2:   %d\n", i.level2);
+    printf("Level3:   %d\n", i.level3);
 }
 
 void list_directory(const char* path) {
