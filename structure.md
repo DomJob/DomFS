@@ -16,12 +16,12 @@
         --- 64 bit fields (8 bytes)
         offset          6 bits
         size (on disk)  38 bits
-        mode            12 bit flags
+        mode            6 bit flags
                             - is directory
                             - is regular file
                             - is link
-                            - RWX user group all
-        number links    8 bits
+                            - RWX user only
+        number files    14 bits
         ---
 
         created         4 bytes

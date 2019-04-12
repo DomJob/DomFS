@@ -128,7 +128,7 @@ int fs_getattr(const char* path, struct inode* inode) {
     inode->offset   = file_inode.offset;
     inode->size     = file_inode.size;
     inode->mode     = file_inode.mode;
-    inode->nlinks   = file_inode.nlinks;
+    inode->nfiles   = file_inode.nfiles;
     inode->created  = file_inode.created;
     inode->modified = file_inode.modified;
     inode->level1   = file_inode.level1;
@@ -155,9 +155,9 @@ int fs_create(const char* path) {
 
     if(fs_getattr(parent_path, &parent_inode) == -1)
         return -1; // Parent directory not found
-    if(!(parent_inode.mode & G_IFDIR))
+    if(!(parent_inode.mode & M_IFDIR))
         return -4; // Parent "directory" is not a directory
-    if(!(parent_inode.mode & G_IWUSR))
+    if(!(parent_inode.mode & M_PWRITE))
         return -3; // No permission to write in parent directory
     if(fs_getattr(path, &inode) == 0)
         return -2; // File already exists
@@ -165,14 +165,13 @@ int fs_create(const char* path) {
     // Creates file inode
     seize_inode(&inode);
     inode.size     = 0;
-    inode.mode     = G_IFREG | 0666;
-    inode.nlinks   = 1;
+    inode.mode     = M_IFREG | M_PREAD | M_PWRITE;
+    inode.nfiles   = 0;
     inode.created  = time(0);
     inode.modified = time(0);
     inode.level1   = 0;
     inode.level2   = 0;
     inode.level3   = 0;
-    printf("Create - update inode\n");
     update_inode(&inode);
 
     // Add to parent's directory data
@@ -180,13 +179,12 @@ int fs_create(const char* path) {
     entry.block = inode.block;
     entry.offset = inode.offset;
     strcpy(entry.name, filename);
-    printf("Create - add to dir data\n");
     dir_add_data(&parent_inode, &entry);
 
     // Update parent inode
+    parent_inode.nfiles += 1;
     parent_inode.modified = time(0);
     parent_inode.size += strlen(filename) + 6;
-    printf("Create - update parent\n");
     update_inode(&parent_inode);
     
     return 0;
@@ -209,9 +207,9 @@ int fs_mkdir(const char* path) {
 
     if(fs_getattr(parent_path, &parent_inode) == -1)
         return -1; // Parent directory not found
-    if(!(parent_inode.mode & G_IFDIR))
+    if(!(parent_inode.mode & M_IFDIR))
         return -4; // Parent "directory" is not a directory
-    if(!(parent_inode.mode & G_IWUSR))
+    if(!(parent_inode.mode & M_PWRITE))
         return -3; // No permission to write in parent directory
     if(fs_getattr(path, &inode) == 0)
         return -2; // File already exists
@@ -219,8 +217,8 @@ int fs_mkdir(const char* path) {
     // Setup inode
     seize_inode(&inode);
     inode.size     = 15;
-    inode.mode     = G_IFDIR | 0666;
-    inode.nlinks   = 2;
+    inode.mode     = M_IFDIR | M_PREAD | M_PWRITE;
+    inode.nfiles   = 2;
     inode.created  = time(0);
     inode.modified = time(0);
     inode.level1   = 0;
@@ -251,7 +249,7 @@ int fs_mkdir(const char* path) {
 
     // Update parent inode
     parent_inode.modified = time(0);
-    parent_inode.nlinks += 1;
+    parent_inode.nfiles += 1;
     parent_inode.size += strlen(dirname) + 6;
     update_inode(&parent_inode);
 }
@@ -268,9 +266,9 @@ int fs_write(const char* path, char* buffer, int offset, int length) {
 
     if(fs_getattr(path, &inode) == -1)
         return -1;
-    if(!(inode.mode & G_IWUSR))
+    if(!(inode.mode & M_PWRITE))
         return -2;
-    if(!(inode.mode & G_IFREG))
+    if(!(inode.mode & M_IFREG))
         return -3;
     if(offset > inode.size)
         return -4;
@@ -309,7 +307,7 @@ int fs_write(const char* path, char* buffer, int offset, int length) {
 
 // Reads `length` bytes into buffer starting from specified offset
 // Returns:
-// ≥ 0 : Number of bytes read
+// ≥0 : Number of bytes read
 // -1 : File not found
 // -2 : Permission error
 // -3 : File isn't a regular file
@@ -319,9 +317,9 @@ int fs_read(const char* path, char* buffer, int offset, int length) {
 
     if(fs_getattr(path, &inode) == -1)
         return -1;
-    if(!(inode.mode & G_IWUSR))
+    if(!(inode.mode & M_PWRITE))
         return -2;
-    if(!(inode.mode & G_IFREG))
+    if(!(inode.mode & M_IFREG))
         return -3;
     if(offset > inode.size)
         return -4;
@@ -349,6 +347,53 @@ int fs_read(const char* path, char* buffer, int offset, int length) {
     }
 
     return p;
+}
+
+// Fetches lists of entries in a directory
+// Uses malloc to populate entries so the caller has to remember to free it
+// Returns:
+// ≥0 : Number of files
+// -1 : Directory not found
+// -2 : Permission error
+// -3 : Not a directory
+int fs_readdir(const char* path, struct file** listing) {
+    struct inode inode;
+
+    if(fs_getattr(path, &inode) == -1)
+        return -1;
+    if(!(inode.mode & M_PREAD))
+        return -2;
+    if(!(inode.mode & M_IFDIR))
+        return -3;
+
+    char rawdata[inode.size];
+
+    // Read entire dir data and get the number of files at the same time
+    int nbFiles = 0;
+    char buffer[2048];
+    int block = 0;
+    long nbBytesRead = 0;
+    int pos = 0;
+    while(nbBytesRead < inode.size) {
+        read_block(get_nth_block(block++, &inode), buffer);
+        int i;
+        for(i=0; i < min(2048, inode.size - nbBytesRead); i++) {
+            rawdata[nbBytesRead+i] = buffer[i];
+
+            if(pos > 5 && buffer[i] == 0x03) {
+                nbFiles++;
+                pos = 0;
+            }
+            pos++;
+        }
+        nbBytesRead += i;
+    }
+
+    (*listing) = (struct file*) malloc(nbFiles * sizeof(struct file));
+
+    unpack_listing(*listing, rawdata, inode.size, nbFiles);
+
+    return nbFiles;
 }
 
 // Formats the "disk" i.e. posts and pins a new superblock and initializes the root directory
@@ -386,8 +431,8 @@ int fs_format() {
     root_inode.block    = root_inode_block;
     root_inode.offset   = 0;
     root_inode.size     = len;
-    root_inode.nlinks   = 2;
-    root_inode.mode     = G_IFDIR | 0666;
+    root_inode.nfiles   = 2;
+    root_inode.mode     = M_IFDIR | M_PREAD | M_PWRITE;
     root_inode.created  = now;
     root_inode.modified = now;
     root_inode.level1   = root_inode_lvl1;
@@ -688,16 +733,28 @@ int add_to_listing(struct file* old, struct file* new, int nb) {
 }
 
 void print_inode(struct inode *i) {
-    printf("--- Inode\n");
-    printf("Address: %d | Offset %d\n", i->block, i->offset);
-    printf("Size: %d\n", i->size);
-    printf("Mode: %u\n", i->mode);
-    printf("nlinks: %d\n", i->nlinks);
-    printf("Created: %d\n", i->created);
+    char mode[] = "----";
+    if(i->mode & M_IFDIR)
+        mode[0] = 'd';
+    else if(i->mode & M_IFLNK)
+        mode[0] = 'l';
+    if(i->mode & M_PREAD)
+        mode[1] = 'r';
+    if(i->mode & M_PWRITE)
+        mode[2] = 'w';
+    if(i->mode & M_PEXEC)
+        mode[3] = 'x';
+
+    printf("--- Inode ---\n");
+    printf("Address:  %d | Offset %d\n", i->block, i->offset);
+    printf("Size:     %d\n", i->size);
+    printf("Mode:     %s (%d)\n", mode, i->mode);
+    printf("nfiles:   %d\n", i->nfiles);
+    printf("Created:  %d\n", i->created);
     printf("Modified: %d\n", i->modified);
-    printf("Level1: %d\n", i->level1);
-    printf("Level2: %d\n", i->level2);
-    printf("Level3: %d\n", i->level3);
+    printf("Level1:   %d\n", i->level1);
+    printf("Level2:   %d\n", i->level2);
+    printf("Level3:   %d\n", i->level3);
 }
 
 int get_filename(const char *path, char *filename) {

@@ -13,10 +13,10 @@ struct superblock {
 
 struct PACKED inode {
     BID block;
-    uint64_t size  : 38;
-    uint16_t mode  : 12;
-    uint8_t offset : 6;
-    uint8_t nlinks;
+    uint64_t size   : 38;
+    uint16_t nfiles : 14;
+    uint16_t mode   : 6;
+    uint8_t  offset : 6;
 
     uint32_t created;
     uint32_t modified;
@@ -49,7 +49,7 @@ int fs_create(const char* path);
 int fs_mkdir(const char* path);
 int fs_write(const char* path, char* buffer, int offset, int length);
 int fs_read(const char* path, char* buffer, int offset, int length);
-int fs_readdir(const char* path, struct file** entries);
+int fs_readdir(const char* path, struct file** listing);
 int fs_chmod(const char* path, uint16_t new_mode);
 int fs_hardlink(const char* source, char* dest);
 int fs_unlink(const char* path);
