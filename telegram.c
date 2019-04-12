@@ -244,7 +244,7 @@ BID tg_get_pinned_message() {
         if(!event) 
             break;
         if(strstr(event, "getpinned") != NULL) {
-            DPRINT("event - %s\n", event);
+            //DPRINT("get pinned - %s\n", event);
             ok = 1;
             break;
         }

@@ -122,17 +122,17 @@ char hex2byte(char first, char second) {
 // It basically has the job of avoiding Telegram's rate limit
 // by minimizing how many edit requests are actually made
 void *write_loop() {
-    int empty = 0;
-    while(mounted || !empty) {
+    while(1) {
         DIR* d = opendir("./cache");
-        struct dirent *file = readdir(d);
-        empty = 0;
-
+        struct dirent *file;
+        file = readdir(d);
         while(file != NULL && (strcmp(file->d_name, ".") == 0 || strcmp(file->d_name, "..") == 0)) {
             file = readdir(d);
         }
+
         if(file == NULL) {
-            empty = 1;
+            if(!mounted)
+                break;
             sleep(1);
             continue;
         }
@@ -149,6 +149,7 @@ void *write_loop() {
         
         char path[25];
         sprintf(path, "./cache/%s", name);
+        
         FILE* f = fopen(path, "r");
         if(f == NULL) {
             printf("%s how come?\n", path);
@@ -165,9 +166,8 @@ void *write_loop() {
             }
             data[i] = c;
         }
-        
         int success = -1;
-        while(!success == -1) {
+        while(success == -1) {
             success = tg_edit_message(block_id, data);
             sleep(1);
         }

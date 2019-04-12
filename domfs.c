@@ -307,6 +307,50 @@ int fs_write(const char* path, char* buffer, int offset, int length) {
     return p;
 }
 
+// Reads `length` bytes into buffer starting from specified offset
+// Returns:
+// ≥ 0 : Number of bytes read
+// -1 : File not found
+// -2 : Permission error
+// -3 : File isn't a regular file
+// -4 : Offset too big
+int fs_read(const char* path, char* buffer, int offset, int length) {
+    struct inode inode;
+
+    if(fs_getattr(path, &inode) == -1)
+        return -1;
+    if(!(inode.mode & G_IWUSR))
+        return -2;
+    if(!(inode.mode & G_IFREG))
+        return -3;
+    if(offset > inode.size)
+        return -4;
+    if(offset + length > inode.size)
+        length = inode.size - offset;
+
+    int p = 0;
+    int nbBytesLeft = length;
+    int block = offset / 2048;
+    int pos_in_block = offset % 2048;
+    char data[2048];
+
+    while(nbBytesLeft > 0) {
+        BID addr = get_nth_block(block++, &inode);
+        read_block(addr, data);
+
+        int r=0;
+        for(int i=pos_in_block; i < min(2048, pos_in_block + nbBytesLeft); i++) {
+            buffer[p++] = data[i];
+            r++;
+        }
+
+        nbBytesLeft -= r;
+        pos_in_block = 0;
+    }
+
+    return p;
+}
+
 // Formats the "disk" i.e. posts and pins a new superblock and initializes the root directory
 int fs_format() {
     BID sb_id = seize_block();
