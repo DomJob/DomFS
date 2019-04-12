@@ -84,7 +84,7 @@ int fs_getattr(const char* path, struct inode* inode) {
                 offset = listing[i].offset;
             }
         }
-        
+
         free(listing);
 
         if(!found)
@@ -355,6 +355,50 @@ int fs_readdir(const char* path, struct file** listing) {
     unpack_listing(*listing, rawdata, inode.size, inode.nfiles);
 
     return inode.nfiles;
+}
+
+// Changes mode (permissions)
+// Returns:
+//  0 : Success
+// -1 : Not found
+int fs_chmod(const char* path, uint8_t new_mode) {
+    struct inode inode;
+    if(fs_getattr(path, &inode) == -1)
+        return -1;
+
+    if(inode.mode & M_IFDIR)
+        new_mode |= M_IFDIR;
+    if(inode.mode & M_IFREG)
+        new_mode |= M_IFREG;
+    if(inode.mode & M_IFLNK)
+        new_mode |= M_IFLNK;
+
+    inode.mode = new_mode;
+    update_inode(&inode);
+    return 0;
+}
+
+// Truncates file
+// Returns:
+// ≥0 : New size
+// -1 : Not found
+// -2 : Not a regular file
+// -3 : Permission issue
+int fs_truncate(const char* path, uint64_t length) {
+    struct inode inode;
+    if(fs_getattr(path, &inode) == -1)
+        return -1;
+    if(!(inode.mode & M_IFREG))
+        return -2;
+    if(!(inode.mode & M_PWRITE))
+        return -3;
+
+    if(length >= inode.size)
+        return inode.size;
+
+    inode.size = length;
+    update_inode(&inode);
+    return inode.size;
 }
 
 // Formats the "disk" i.e. posts and pins a new superblock and initializes the root directory

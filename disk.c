@@ -166,6 +166,7 @@ void *write_loop() {
             }
             data[i] = c;
         }
+
         int success = -1;
         while(success == -1) {
             success = tg_edit_message(block_id, data);

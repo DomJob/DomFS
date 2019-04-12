@@ -50,12 +50,12 @@ int fs_mkdir(const char* path);
 int fs_write(const char* path, char* buffer, int offset, int length);
 int fs_read(const char* path, char* buffer, int offset, int length);
 int fs_readdir(const char* path, struct file** listing);
-int fs_chmod(const char* path, uint16_t new_mode);
+int fs_chmod(const char* path, uint8_t new_mode);
 int fs_hardlink(const char* source, char* dest);
 int fs_unlink(const char* path);
 int fs_rmdir(const char* path);
 int fs_rename(const char* source, char* dest);
-int fs_truncate(const char* path, long length);
+int fs_truncate(const char* path, uint64_t length);
 int fs_format();
 
 #endif
