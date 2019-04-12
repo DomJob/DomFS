@@ -19,6 +19,8 @@
 #define BLOCK_SIZE      2048
 #define INODE_SIZE      32
 #define BLOCK_ADDR      5
+#define MAX_NAME_SIZE   256
+#define MAX_PATH_SIZE   4096
 #define BID             uint32_t
 
 #define MAX_FILE_SIZE   275415826432 // (512 + 512^2 + 512^3) * 2048 bytes

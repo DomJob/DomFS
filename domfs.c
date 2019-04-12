@@ -64,7 +64,7 @@ int fs_getattr(const char* path, struct inode* inode) {
     } else {
         // Find the parent's inode
         char parent[2048];
-        char filename[256];
+        char filename[MAX_NAME_SIZE];
         get_parent(path, parent);
         get_filename(path, filename);
 
@@ -114,8 +114,8 @@ int fs_getattr(const char* path, struct inode* inode) {
 // -3 : Permission error
 // -4 : Path error
 int fs_create(const char* path) {
-    char filename[256];
-    char parent_path[1024];
+    char filename[MAX_NAME_SIZE];
+    char parent_path[MAX_PATH_SIZE];
     get_filename(path, filename);
     get_parent(path, parent_path);
 
@@ -166,8 +166,8 @@ int fs_create(const char* path) {
 // -3 : Permission error
 // -4 : Path error
 int fs_mkdir(const char* path) {
-    char dirname[256];
-    char parent_path[1024];
+    char dirname[MAX_NAME_SIZE];
+    char parent_path[MAX_PATH_SIZE];
     get_filename(path, dirname);
     get_parent(path, parent_path);
 
@@ -383,13 +383,12 @@ int fs_chmod(const char* path, uint8_t new_mode) {
 // Returns:
 //  0 : Success
 // -1 : Source not found
-// -2 : Source is not a regular file
-// -3 : Destination already exists
-// -4 : Destination directory not found
+// -2 : Destination already exists
+// -3 : Destination directory not found
 int fs_hardlink(const char* source, const char* dest) {
-    char source_filename[256];
-    char dest_parent[1024];
-    char dest_filename[256];
+    char source_filename[MAX_NAME_SIZE];
+    char dest_parent[MAX_PATH_SIZE];
+    char dest_filename[MAX_NAME_SIZE];
 
     get_filename(source, source_filename);
     get_filename(dest, dest_filename);
@@ -398,12 +397,10 @@ int fs_hardlink(const char* source, const char* dest) {
     struct inode source_inode, dest_parent_inode, dest_inode;
     if(fs_getattr(source, &source_inode) == -1)
         return -1;
-    if(!(source_inode.mode & M_IFREG))
-        return -2;
     if(fs_getattr(dest, &dest_inode) == 0)
-        return -3;
+        return -2;
     if(fs_getattr(dest_parent, &dest_parent_inode) == -1)
-        return -4;
+        return -3;
 
     // Add a new entry pointing to source's inode address
     // in dest_parent's directory data
@@ -437,8 +434,8 @@ int fs_unlink(const char* path) {
     if(!(inode.mode & M_PWRITE))
         return -3;
 
-    char parent[1024];
-    char filename[256];
+    char parent[MAX_PATH_SIZE];
+    char filename[MAX_NAME_SIZE];
     get_filename(path, filename);
     get_parent(path, parent);
   
@@ -503,8 +500,8 @@ int fs_unlink(const char* path) {
 // -4 : Permission error
 int fs_rmdir(const char* path) {
     struct inode inode, parent_inode;
-    char parent[1024];
-    char dirname[256];
+    char parent[MAX_PATH_SIZE];
+    char dirname[MAX_NAME_SIZE];
     get_parent(path, parent);
     get_filename(path, dirname);
 
@@ -566,6 +563,23 @@ int fs_rmdir(const char* path) {
 
     return 0;
 
+}
+
+// Renames or moves a file/directory
+// Returns:
+//  0 : Success
+// -1 : Source not found
+// -2 : Destination already exists
+// -3 : Destination directory not found
+int fs_rename(const char* source, const char* dest) {
+    
+    int hl = fs_hardlink(source, dest);
+    if(hl != 0)
+        return hl;
+    
+    fs_unlink(source);
+
+    return 0;
 }
 
 // Truncates file
@@ -812,7 +826,7 @@ long pack_listing(struct file* listing, int nbFiles, char* buffer) {
 
 // Get the list of files from a binary string
 int unpack_listing(struct file* listing, char* packed, long length, int nbFiles) {
-    char name[256][nbFiles];
+    char name[MAX_NAME_SIZE][nbFiles];
     int name_pos = -2;
     char bin_block[5];
     int bin_block_pos = 0;
@@ -1002,7 +1016,7 @@ void list_directory(const char* path) {
 
     printf("Directory listing for %s\n\n", path);
     for(int i=0;i<n;i++) {
-        char fullpath[1024];
+        char fullpath[MAX_PATH_SIZE];
         
         sprintf(fullpath, "%s/%s", path, listing[i].name);
         struct inode inode = get_inode(listing[i].block, listing[i].offset);

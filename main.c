@@ -9,10 +9,9 @@ int main(int argc, char **argv) {
     disk_initialize();
     fs_initialize();
 
-    show_stat("/deleteme");
-    int k = fs_rmdir("/hardlink.txt");
+    list_directory("/");
 
-    printf("rmdir said: %d\n", k);
+    fs_rename("/renamed.txt", "/ect.txt");
 
     list_directory("/");
     disk_release();

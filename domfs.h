@@ -54,7 +54,7 @@ int fs_chmod(const char* path, uint8_t new_mode);
 int fs_hardlink(const char* source, const char* dest);
 int fs_unlink(const char* path);
 int fs_rmdir(const char* path);
-int fs_rename(const char* source, char* dest);
+int fs_rename(const char* source, const char* dest);
 int fs_truncate(const char* path, uint64_t length);
 int fs_format();
 
