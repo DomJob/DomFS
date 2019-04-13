@@ -1,6 +1,15 @@
 #ifndef DISK_H
 #define DISK_H
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <pthread.h>
+#include <stdint.h>
+#include <string.h>
+#include <sys/stat.h>
+
 #include "macro.h"
 #include "telegram.h"
 

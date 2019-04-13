@@ -1,6 +1,11 @@
 #ifndef DOMFS_H
 #define DOMFS_H
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
 #include "macro.h"
 #include "disk.h"
 
@@ -47,7 +52,7 @@ int fs_initialize();
 int fs_getattr(const char* path, struct inode* inode);
 int fs_create(const char* path);
 int fs_mkdir(const char* path);
-int fs_write(const char* path, char* buffer, int offset, int length);
+int fs_write(const char* path, const char* buffer, int offset, int length);
 int fs_read(const char* path, char* buffer, int offset, int length);
 int fs_readdir(const char* path, struct file** listing);
 int fs_chmod(const char* path, uint8_t new_mode);

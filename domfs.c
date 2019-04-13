@@ -229,7 +229,7 @@ int fs_mkdir(const char* path) {
 // -2 : Permission error
 // -3 : File isn't a regular file
 // -4 : Offset too big
-int fs_write(const char* path, char* buffer, int offset, int length) {
+int fs_write(const char* path, const char* buffer, int offset, int length) {
     struct inode inode;
 
     if(fs_getattr(path, &inode) == -1)
@@ -385,6 +385,7 @@ int fs_chmod(const char* path, uint8_t new_mode) {
 // -1 : Source not found
 // -2 : Destination already exists
 // -3 : Destination directory not found
+// -4 : Permission error
 int fs_hardlink(const char* source, const char* dest) {
     char source_filename[MAX_NAME_SIZE];
     char dest_parent[MAX_PATH_SIZE];
@@ -401,7 +402,8 @@ int fs_hardlink(const char* source, const char* dest) {
         return -2;
     if(fs_getattr(dest_parent, &dest_parent_inode) == -1)
         return -3;
-
+    if(!(dest_parent_inode.mode & M_PWRITE))
+        return -4;
     // Add a new entry pointing to source's inode address
     // in dest_parent's directory data
     struct file entry;
@@ -571,12 +573,20 @@ int fs_rmdir(const char* path) {
 // -1 : Source not found
 // -2 : Destination already exists
 // -3 : Destination directory not found
+// -4 : Permission error
 int fs_rename(const char* source, const char* dest) {
     
     int hl = fs_hardlink(source, dest);
     if(hl != 0)
         return hl;
     
+    struct inode source_inode;
+    fs_getattr(source, &source_inode);
+    if(!(source_inode.mode & M_PREAD)) {
+        fs_unlink(dest);
+        return -4;
+    }
+
     fs_unlink(source);
 
     return 0;

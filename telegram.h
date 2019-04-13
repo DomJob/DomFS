@@ -1,6 +1,14 @@
 #ifndef TELEGRAM_H
 #define TELEGRAM_H
 
+#include <unistd.h>
+#include <dirent.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <sys/stat.h>
+
 #include "macro.h"
 
 struct tg_data_struct {

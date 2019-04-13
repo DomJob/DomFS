@@ -1,15 +1,6 @@
 #ifndef MACRO_H
 #define MACRO_H
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <dirent.h>
 
 #define PACKED          __attribute__((__packed__)) 
 
