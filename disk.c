@@ -9,6 +9,7 @@ void *write_loop();
 
 void disk_initialize() {
     mkdir("./cache", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    
     pthread_create(&write_thread, NULL, write_loop, NULL);
     mounted = 1;
 }

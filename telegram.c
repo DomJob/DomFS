@@ -1,6 +1,7 @@
 #include "telegram.h"
 
 unsigned int counter;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 unsigned int parse_id(char* event);
 void tg_parse_data();
@@ -11,7 +12,7 @@ void tg_initialize() {
     counter = 0;
     tg_parse_data();
 
-    td_set_log_verbosity_level(2);
+    td_set_log_verbosity_level(5);
     td_set_log_file_path("./client.log");
     client = td_json_client_create();
 
@@ -86,10 +87,10 @@ BID tg_send_message(char* message) {
         "{\"@type\": \"sendMessage\", \"chat_id\": \"%s\", \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"sendmessage\"}",
         tg_data.chat, message, strlen(message));
     
-    td_json_client_send(client, req);
 
     int success = 0;
-
+    td_json_client_send(client, req);
+    pthread_mutex_lock(&mutex);
     char* event;
     while(1) {
         event = td_json_client_receive(client, TIMEOUT);
@@ -103,6 +104,7 @@ BID tg_send_message(char* message) {
         if(strstr(event, "error") != NULL) 
             DPRINT("ERROR SENDING MESSAGE: %s\n", event);
     }
+    pthread_mutex_unlock(&mutex);
 
     if(!success)
         return 0;
@@ -122,10 +124,10 @@ int tg_read_message(BID id, char* message) {
     "{\"@type\": \"getMessage\", \"chat_id\": \"%s\", \"message_id\": \"%d\", \"@extra\": \"%s\"}",
     tg_data.chat, id, extra);
     // Send request
+
+    pthread_mutex_lock(&mutex);
     td_json_client_send(client, request);
-
     char* event;
-
     while(1) {
         event = td_json_client_receive(client, TIMEOUT);
         if(!event) 
@@ -134,7 +136,7 @@ int tg_read_message(BID id, char* message) {
             break;
         }
     }
-
+    pthread_mutex_unlock(&mutex);
     if(!event)
         return -1;
     if(strstr(event, "error") != NULL) {
@@ -178,12 +180,10 @@ void tg_pin_message(BID id) {
     "{\"@type\": \"pinSupergroupMessage\", \"supergroup_id\": \"%s\", \"message_id\": \"%d\", \"disable_notification\": true, \"@extra\": \"pinmessage\"}",
     tg_data.supergroup, id);
 
+    pthread_mutex_lock(&mutex);
     td_json_client_send(client, request);
-
-    char* event;
-
     while(1) {
-        event = td_json_client_receive(client, TIMEOUT);
+        char* event = td_json_client_receive(client, TIMEOUT);
         if(!event) 
             break;
         if(strstr(event, "updateChatLastMessage") != NULL && strstr(event, "messagePinMessage") != NULL) {
@@ -195,6 +195,7 @@ void tg_pin_message(BID id) {
             break;
         }
     }
+    pthread_mutex_unlock(&mutex);
 }
 
 int tg_edit_message(BID id, char* message) {
@@ -207,8 +208,8 @@ int tg_edit_message(BID id, char* message) {
         "{\"@type\": \"editMessageText\", \"chat_id\": \"%s\", \"message_id\" : %d, \"input_message_content\": {\"@type\": \"inputMessageText\", \"text\": {\"@type\": \"formattedText\", \"text\": \"%s\", \"entities\": [{\"@type\": \"textEntity\", \"offset\": 0, \"length\": \"%d\", \"type\": {\"@type\": \"textEntityTypeCode\"}}]}}, \"@extra\": \"%s\"}",
         tg_data.chat, id << 20, message, strlen(message), extra);
     
+    pthread_mutex_lock(&mutex);
     td_json_client_send(client, req);
-
     char* event;
     int ok = -1;
     while(1) {
@@ -229,6 +230,7 @@ int tg_edit_message(BID id, char* message) {
             break;
         }
     }
+    pthread_mutex_unlock(&mutex);
 
     return ok;
 }
@@ -241,6 +243,7 @@ BID tg_get_pinned_message() {
 
     td_json_client_send(client, request);
 
+    pthread_mutex_lock(&mutex);
     char* event;
     int ok = 0;
     while(1) {
@@ -253,6 +256,7 @@ BID tg_get_pinned_message() {
             break;
         }
     }
+    pthread_mutex_unlock(&mutex);
 
     if(!ok) {
         DPRINT("something went wrong - %s\n", event);
@@ -269,13 +273,14 @@ void tg_delete_message(BID id) {
                 tg_data.chat, id << 20);
                 
     td_json_client_send(client, deleteReq);
-
+    pthread_mutex_lock(&mutex);
     while(1) {
         char* event = td_json_client_receive(client, TIMEOUT);
         if(!event || strstr(event, "deletemessage") != NULL) {
             return;
         }
     }
+    pthread_mutex_unlock(&mutex);
 }
 
 void tg_parse_data() {

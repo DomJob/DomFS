@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <pthread.h>
 
 #include "macro.h"
 

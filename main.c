@@ -72,7 +72,7 @@ static int df_mkdir(const char* path, mode_t mode) {
 }
 
 static int df_write(const char* path, const char* buffer, size_t length, off_t offset, struct fuse_file_info *fo) {
-    DPRINT("write %s", path);
+    DPRINT("write %s\n", path);
 
     int res = fs_write(path, buffer, offset, length);
 
@@ -85,7 +85,7 @@ static int df_write(const char* path, const char* buffer, size_t length, off_t o
 }
 
 static int df_read(const char* path, char* buffer, size_t length, off_t offset, struct fuse_file_info *fo) {
-    DPRINT("read - %s", path);
+    DPRINT("read - %s\n", path);
 
     int res = fs_read(path, buffer, offset, length);
 
@@ -172,7 +172,7 @@ static int df_rmdir(const char* path) {
 }
 
 static int df_rename(const char* source, const char* dest){
-    DPRINT("rename %s to %s", source, dest);
+    DPRINT("rename %s to %s\n", source, dest);
 
     int res = fs_rename(source, dest);
 
@@ -186,7 +186,7 @@ static int df_rename(const char* source, const char* dest){
 }
 
 static int df_truncate(const char* path, off_t length) {
-    DPRINT("truncate %s to %jd bytes", path, length);
+    DPRINT("truncate %s to %jd bytes\n", path, length);
 
     int res = fs_truncate(path, length);
 
@@ -199,19 +199,18 @@ static int df_truncate(const char* path, off_t length) {
 
 static struct fuse_operations df_oper = {
     .getattr    = df_getattr,
+    .readdir    = df_readdir,
     .create     = df_create,
     .mkdir      = df_mkdir,
     .write      = df_write,
     .read       = df_read,
-    .readdir    = df_readdir,
     .chmod      = df_chmod,
     .link       = df_hardlink,
     .unlink     = df_unlink,
     .rmdir      = df_rmdir,
     .rename     = df_rename,
-    .truncate   = df_truncate,
+    .truncate   = df_truncate
 };
-
 
 int main(int argc, char* argv[]) {
     tg_initialize();
@@ -220,8 +219,11 @@ int main(int argc, char* argv[]) {
 
     int r = fuse_main(argc, argv, &df_oper, NULL);
 
+    printf("Terminating all write procedures... Don't force-quit this!\n");
     disk_release();
+    printf("Done. Closing down telegram...\n");
     tg_close();
+
     return r;
 }
 
